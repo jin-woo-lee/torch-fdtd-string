@@ -1,4 +1,4 @@
-python-sofa # necesary?
-plyfile # necesary?
-pymeshlab # necesary?
+torchinfo
+wandb
+einops
 

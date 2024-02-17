@@ -2,8 +2,10 @@ __pycache__/
 */__pycache__/
 */*/__pycache__/
 */*/*/__pycache__/
+check/
 data/
 log/
+vnv/
 
 src/
 src/model/cpp/build

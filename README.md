@@ -110,6 +110,13 @@ As the spectrograms above show, without the precorrection, there is a bit of det
 python -m run  ... task.precorrect=false
 ```
 
+### Evaluate or plot the simulated results
+You can evaluate or plot the simulation results by passing `experiment=evaluate`.
+Please specify the path to the directory that contains the simulation results.
+```bash
+ls /path/to/simulated/directory # 0-0  0-1  ...  codes  run.log
+python -m run experiment=evaluate task.load_dir='/path/to/simulated/directory/' 
+```
 
 ## Citation
 
