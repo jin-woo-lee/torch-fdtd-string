@@ -1,5 +1,7 @@
 <p align="center">
 <img src="res/2024-string.gif" width="24em">
+<br>
+Simulated string with bowing excitation, exhibiting a Helmholtz motion.
 </p>
 
 ----
@@ -8,10 +10,8 @@
 
 This repository is currently undergoing significant refactoring, and the codebase is incomplete. I appreciate your patience as I improve and enhance the project.
 
-I am actively working on restructuring the code
-to enhance its readability, maintainability, and
-overall performance. This refactoring process is
-aimed at delivering a more robust and feature-rich project.
+I am actively working on refactoring the code, and
+the simulation code will be released at Apr 14, 2024.
 
 I am committed to releasing the updated code soon.
 Please stay tuned for further updates. Your
