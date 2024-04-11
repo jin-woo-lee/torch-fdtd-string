@@ -1,0 +1,109 @@
+_name_: simulate
+
+# number of data
+num_samples: 1600 # number of samples for simulation
+batch_size: 16  # simulation batch size
+skip_nan: true  # skip diverged simulations while saving. otherwise raises error
+skip_silence: true  # skip silent simulations while saving. otherwise save the silent results
+silence_threshold: -23. # dB
+
+randomize_name: false # randomize savenames
+
+# error configuration
+relative_order: 4 # order of the discretization error relative to the spatial grid size
+precision: single # single/double precision
+
+# number of samples in time
+length: 1.  # length (in sec) to simulate
+chunk_length: -1.  # length (in sec) to simulate in a chunk
+sr: 48000  # temporal sampling rate
+
+# number of samples in space
+f0_inf: 20. # minimum fundamental frequency (in Hz); can reduce redundancy in u.
+alpha_inf: 1.0 # minimum nonlinearity; can reduce redundancy in z (or zeta).
+
+sampling_f0     : random  # (fix, span, random) input f0
+sampling_kappa  : random  # (fix, span, random) string stiffness
+sampling_alpha  : random  # (fix, span, random) nonlinearity
+sampling_pickup : random  # (fix, span, random) pickup position
+sampling_T60    : random  # (fix, span, random) string lossiness
+
+precorrect: true # pre-correct fundamental frequency with string stiffness
+
+lambda_c: 1 # grid resolution factor (should be >= 1; best to be 1)
+theta_t: null # implicit scheme free parameter (should be > 1/2 for a stable simulation.) set this value by `null` if you don't understand this (then it will automatically be set by an appropriate one).
+
+string_condition:
+  - f0_min       : null
+  - f0_max       : null
+  - f0_diff_max  : null
+  - f0_mod_max   : null
+  - f0_fixed     : null
+  - kappa_min    : null
+  - kappa_max    : null
+  - kappa_fixed  : null
+  - kappa_hammer : null
+  - alpha_min    : null
+  - alpha_max    : null
+  - alpha_fixed  : null
+  - pos_min      : null
+  - pos_max      : null
+  - pos_fixed    : null
+  - lossless     : null
+  - t60_min_1    : null
+  - t60_max_1    : null
+  - t60_min_2    : null
+  - t60_max_2    : null
+  - t60_fixed    : null
+
+pluck_condition:
+  - sampling_p_a : random
+  - p_a_min      : null
+  - p_a_max      : null
+  - p_a_fixed    : null
+  - sampling_p_x : random
+  - p_x_min      : null
+  - p_x_max      : null
+  - p_x_fixed    : null
+  - pluck_profile: null
+
+hammer_condition:
+  - x_H_min     : null
+  - x_H_max     : null
+  - v_H_min     : null
+  - v_H_max     : null
+  - M_r_min     : null
+  - M_r_max     : null
+  - w_H_min     : null
+  - w_H_max     : null
+  - alpha_fixed : null
+
+bow_condition:
+  - x_b_min    : null
+  - x_b_max    : null
+  - x_b_maxdiff: null
+  - v_b_min    : null
+  - v_b_max    : null
+  - F_b_min    : null
+  - F_b_max    : null
+  - do_pulloff : null
+  - F_b_maxdiff: null
+  - phi_0_max  : null
+  - phi_0_min  : null
+  - phi_1_max  : null
+  - phi_1_min  : null
+  - wid_min    : null
+  - wid_max    : null
+
+save: true # save results in npz file
+plot: true # plot results
+plot_state: false # plot string video (can raise slowdown while plotting)
+measure_time: false # measure the process time
+write_during_process: true # write output wav file everytime it finishes processing every chunk
+normalize_output: false # whether normalize the pickup output while saving the .wav file
+surface_integral: true # pickup using surface integral of velocities (if flase: state interpolation)
+
+load_dir: null
+save_name: null
+load_config: ???
+

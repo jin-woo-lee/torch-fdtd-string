@@ -1,0 +1,11 @@
+defaults:
+  - excitation: null # null for random excitation
+
+x_scale: 0
+t_scale: 0
+activation: 'tanh'
+
+res_channels: null
+skip_channels: null
+num_res_layers: null
+dilation_cycle: null

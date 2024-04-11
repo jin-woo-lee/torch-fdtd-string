@@ -1,0 +1,82 @@
+# @package _global_
+defaults:
+  - /model: base
+  - /task: simulate
+
+model: 
+  excitation: pluck
+
+proc: 
+  num_workers: 2
+
+task: 
+  num_samples: 1
+  dont_save_silence: false
+  batch_size: 1
+  relative_order: 8
+  precision: double
+  #length: 0.2
+  length: 2.
+  chunk_length: 0.001
+  write_during_process: true
+  normalize_output: true
+
+  theta_t: 1
+
+  #sampling_f0     : random
+  sampling_f0     : fix
+  sampling_kappa  : fix
+  sampling_alpha  : fix
+  sampling_pickup : random
+  sampling_T60    : fix
+
+  precorrect: false
+  string_condition:
+    #- f0_fixed: 440.0 # A1
+    - f0_fixed: 29.8
+    - f0_mod_max  : 0.02
+    #------------------------------ 
+    #- lossless    : true
+    #- kappa_min   : 0.
+    #- kappa_max   : 0.
+    #- kappa_fixed : 0.
+    #------------------------------ 
+    - lossless    : false
+    - t60_fixed   : 5.
+    - kappa_min   : 0.03
+    - kappa_max   : 0.03
+    - kappa_fixed : 0.03
+    #------------------------------ 
+    - kappa_hammer: 0.
+    - alpha_fixed : 1.
+    - alpha_min   : 1.
+    - alpha_max   : 1.
+  #f0_inf: 440.0 # A1
+  f0_inf: 29.8
+  alpha_inf: 1
+
+  pluck_condition:
+    - sampling_p_a : fix
+    - p_a_fixed: 0.01
+    - sampling_p_x : fix
+    - p_x_fixed : 0.3
+    - pluck_profile : smooth
+    #- pluck_profile : raised_cosine
+    #- pluck_profile : triangular
+
+  hammer_condition:
+    - x_H_min : 0.5
+    - x_H_max : 0.5
+    - v_H_min : 2.50
+    - v_H_max : 2.50
+    - M_r_min : 10.
+    - M_r_max : 10.
+    - w_H_min : 3000
+    - w_H_max : 3000
+    - alpha_fixed: 3
+
+  load_config: null
+
+  plot: true
+  plot_state: true
+

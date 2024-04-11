@@ -29,9 +29,9 @@ def get_object(config, m):
 
 def backup_code(args):
     # Copy directory sturcture and files
-    exclude_dir  = ['data', '__pycache__', 'log', '.git', 'res']
+    exclude_dir  = ['data', '__pycache__', 'log', '.git', 'res', 'check']
     exclude_file = ['cfg', 'cmd', '.gitignore']
-    exclude_ext  = ['.png', '.jpg', '.pt']
+    exclude_ext  = ['.png', '.jpg', '.pt', '.npz']
     filepath = []
     for dirpath, dirnames, filenames in os.walk(args.cwd, topdown=True):
         if not any(dir in dirpath for dir in exclude_dir):
@@ -112,6 +112,11 @@ def main(config: OmegaConf):
         # summarize evaluation results
         load_dir = save_dir if args.task.load_dir is None else args.task.load_dir
         summarize.summarize(load_dir)
+
+    if args.proc.process_training_data:
+        from src.task import process_training_data
+        # preprocess simulation results as training data
+        process_training_data.process(args)
 
     if args.proc.train:
         from src import trainer

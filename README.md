@@ -6,19 +6,6 @@ Simulated string with bowing excitation, exhibiting a Helmholtz motion.
 
 ----
 
-🚧 **Attention: Work in Progress - Code Refactoring** 🚧
-
-This repository is currently undergoing significant refactoring, and the codebase is incomplete. I appreciate your patience as I improve and enhance the project.
-
-I am actively working on refactoring the code, and
-the simulation code will be released at Apr 14, 2024.
-
-I am committed to releasing the updated code soon.
-Please stay tuned for further updates. Your
-understanding and patience are highly appreciated.
-
-----
-
 StringFDTD-Torch is a planar string simulation engine
 for musical instrument sound synthesis research.
 It simulates a string vibration from a given set

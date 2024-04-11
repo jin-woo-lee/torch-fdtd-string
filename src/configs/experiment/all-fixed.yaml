@@ -1,0 +1,71 @@
+# @package _global_
+defaults:
+  - /model: base
+  - /task: simulate
+
+model: 
+  excitation: pluck
+
+proc: 
+  cpu : true
+
+task: 
+  num_samples: 1
+  batch_size: 1
+  relative_order: 8
+  precision: double
+  length: .5
+  chunk_length: 0.01
+  skip_silence: false
+
+  sampling_f0      : fix
+  sampling_kappa   : fix
+  sampling_alpha   : fix
+  sampling_pickup  : fix
+  sampling_T60     : fix
+
+  string_condition:
+    #- f0_fixed    : 110
+    - f0_fixed    : 55.0
+    - kappa_fixed : 0.08
+    - alpha_fixed : 20.
+    - lossless    : false
+  #f0_inf: 110
+  f0_inf: 55.0
+  alpha_inf: 20
+
+  hammer_condition:
+    - x_H_min : 0.1
+    - x_H_max : 0.1
+    - v_H_min : 4.00
+    - v_H_max : 4.00
+    - M_r_min : 1.50
+    - M_r_max : 1.50
+    - w_H_min : 2000
+    - w_H_max : 2000
+
+  pluck_condition:
+    - sampling_p_a : fix
+    - p_a_fixed    : 0.02
+    - sampling_p_x : fix
+    - p_x_fixed    : 0.2
+
+  bow_condition:
+    - x_b_min    : 0.2
+    - x_b_max    : 0.2
+    - v_b_min    : 0.35
+    - v_b_max    : 0.35
+    - F_b_min    : 90
+    - F_b_max    : 90.
+    - phi_0_max  : 9.
+    - phi_0_min  : 9.
+    - phi_1_max  : 0.01
+    - phi_1_min  : 0.01
+    - wid_min    : 4
+    - wid_max    : 4
+
+  load_config: null
+
+  plot: true
+  #plot_state: true
+

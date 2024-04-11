@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - /model: base
+
+model: 
+  excitation: null
+
+

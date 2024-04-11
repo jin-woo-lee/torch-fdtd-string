@@ -1,0 +1,63 @@
+# @package _global_
+defaults:
+  - /model: base
+  - /task: simulate
+
+model: 
+  excitation: null
+
+proc: 
+  num_workers: 4
+  #num_workers: 32
+
+task: 
+  randomize_name: true
+  num_samples: 32000
+  batch_size: 8
+  relative_order: 4
+  precision: single
+  length: 1.0
+  chunk_length: 0.001
+
+  dont_save_silence: false
+  write_during_process: false
+  normalize_output: true
+
+  sampling_f0     : random
+  sampling_kappa  : random
+  sampling_alpha  : random
+  sampling_pickup : random
+  sampling_T60    : random
+
+  string_condition:
+    - f0_min: 27.5 # A0
+    - f0_max: 440.0 # A4
+    - f0_diff_max : 0
+    - f0_mod_max  : 0.02
+    - kappa_min   : 0.01
+    - kappa_max   : 0.03
+    - kappa_fixed : 0.03
+    - kappa_hammer: 0
+    - alpha_fixed : 25.
+    - alpha_min   : 10.
+    - alpha_max   : 25.
+  f0_inf: 27.5 # A0
+  alpha_inf: 10
+
+  pluck_condition:
+    - sampling_p_a : random
+    - p_a_max: 0.02
+    - sampling_p_x : random
+    - p_x_max: 0.5
+
+  hammer_condition:
+    - M_r_min : 1.0
+    - M_r_max : 10.
+    - alpha_fixed: 3
+
+  load_config: null
+
+  #plot: false
+  plot: true
+  #plot_state: true
+

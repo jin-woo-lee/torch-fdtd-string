@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - _self_
+  - experiment: base
+  - callbacks: base # Extra pytorch-lightning features
+
+task:
+  root_dir: '/data2/private/szin/dfdm'
+  result_dir: ${task._name_}-${framework._name_}-${model._name_}-${task.run}-${now:%Y%m%d-%H%M%S-%f}
+  save_name: null
+  measure_time: false
+
+proc:
+  cpu: false
+  gpus: [0, ]
+  seed: 1234
+  port: ${now:%M%S}
+  num_workers: 3
+
+  simulate: true # run simulation
+  debug: false # run simulation in debug mode
+  evaluate: false # evaluate the simulated output
+  summarize: false # summarize the evaluation
+  process_training_data: false # preprocess simulation results as training data
+  train: false # train the neural network
+
+hydra:
+  run:
+    dir: ${task.root_dir}/${task.result_dir}
+

@@ -1,0 +1,13 @@
+# @package _global_
+defaults:
+  - /task: evaluate
+
+task:
+  result_dir: null
+
+proc:
+  simulate: false
+  evaluate: true
+  num_workers: 16
+
+

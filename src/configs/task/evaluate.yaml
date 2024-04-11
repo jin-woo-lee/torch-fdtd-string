@@ -1,0 +1,30 @@
+_name_: evaluate
+
+load_dir: null
+save_name: null
+
+# number of data
+num_samples: 1600 # number of samples for simulation
+batch_size: 16  # simulation batch size
+
+# number of samples in time
+length: 1.  # length (in sec) to simulate
+chunk_length: -1.  # length (in sec) to simulate in a chunk
+sr: 48000  # temporal sampling rate
+
+# number of samples in space
+f0_inf: 20. # minimum fundamental frequency (in Hz); can reduce redundancy in u.
+alpha_inf: 1.0 # minimum nonlinearity; can reduce redundancy in z (or zeta).
+
+fix_f0: false  # fix input f0
+fix_kappa: false  #  fix string stiffness
+fix_alpha: false  #  fix nonlinearity
+fix_pickup: false  #  fix pickup position
+fix_T60: false  #  fix string lossiness
+
+save: true # save results in npz file
+plot: false # plot results
+plot_state: false # plot string video (can raise slowdown while plotting)
+measure_time: false # measure the process time
+write_during_process: true # write output wav file everytime it finishes processing every chunk
+

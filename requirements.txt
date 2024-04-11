@@ -1,4 +1,0 @@
-torchinfo
-wandb
-einops
-
