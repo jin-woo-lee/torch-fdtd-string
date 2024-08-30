@@ -1,0 +1,30 @@
+_name_: synthesize
+
+sr: 48000 
+batch_size: 16  # training batch size
+valid_batch_size: 4 # validation batch size
+test_batch_size: 4 # test batch size
+train_lens: 1. # train sample time length (set `null` for whole length)
+
+ckpt_dir: null
+project: 'string'
+run: null
+
+load_dir: '/data2/private/szin/dfdm'
+load_name: 'nsynth-*'
+
+total_epoch: 50
+valid_epoch: 1
+overfit: false
+
+num_valid_samples: -1 # number of samples for test (set as float to use as a portion of whole data samples)
+num_test_samples: -1 # number of samples for test (set as float to use as a portion of whole data s
+
+grad_clip: [null,] # value to clip gradient norm that corresponds to each optimizer
+loss_criteria: ['mse', 'mrstft', ]
+eval_criteria: ['sisdr', 'mrstft', ]
+
+
+save_name: null
+load_config: ???
+

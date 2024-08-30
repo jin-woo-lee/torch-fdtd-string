@@ -1,0 +1,8 @@
+defaults:
+  - trainer
+
+_name_: dmsp
+
+harmonic: 'inharmonic'
+ddsp_frequency_modulation: null
+use_precomputed_mode: false

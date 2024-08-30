@@ -1,0 +1,50 @@
+# @package _global_
+defaults:
+  - /task: synthesize
+  - /model: dmsp
+  - /framework: supervised
+  - /optimizer: radam
+  - /scheduler: noam
+
+model:
+  n_bands    : 65
+  hidden_dim : 512
+  n_modes    : 40
+  embed_dim : 128
+  use_precomputed_mode: false
+
+scheduler:
+  warmup_steps: 1000
+
+optimizer: 
+  lr: 0.001
+
+proc: 
+  cpu : false
+  gpus: [0, ]
+  simulate: false
+  train: true
+
+task: 
+  load_name: '1024-pluck-*'
+
+  valid_batch_size : 256
+  test_batch_size  : 256
+  batch_size: 128
+
+  n_fft: 2048
+  train_lens: 1
+  total_lens: 1
+  valid_epoch: 1
+  grad_clip: [null]
+  loss_criteria: ['l1', 'magspec', 'melspec', 'f0', 'modefreq', 'modeamps']
+  eval_criteria: ['sisdr', 'modefreq', 'modeamps']
+
+  load_config: null
+
+  plot: true
+  #plot_state: true
+
+  plot_test_video: false
+  save_test_score: false
+

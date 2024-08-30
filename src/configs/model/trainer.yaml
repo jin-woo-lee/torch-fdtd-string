@@ -1,0 +1,20 @@
+defaults:
+  - excitation: null # null for random excitation
+
+_name_: trainer
+
+# for NN (ddsp, dmsp)
+n_bands   : ???
+hidden_dim: ???
+embed_dim : ???
+n_modes   : ???
+block_size: 256
+x_scale: [0., 1.]
+t_scale: [0., .3]
+gamma_scale: [196, 880]
+kappa_scale: [.01, .03]
+alpha_scale: [1., 30.]
+sig_0_scale: [0., .7]
+sig_1_scale: [0., 1e-5]
+ddsp_frequency_modulation: ???
+use_precomputed_mode: ???

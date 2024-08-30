@@ -1,0 +1,28 @@
+# @package _global_
+defaults:
+  - /task: process_training_data
+
+proc: 
+  cpu : false
+  gpus: [0, ]
+  simulate: false
+  process_training_data: true
+
+task: 
+  data_split : 8
+  split_n : 0
+  #------------------------------ 
+  #result_dir: 'pluck-dynamic'
+  #save_dir  : '1024-pluck-dynamic'
+  #------------------------------ 
+  #result_dir: 'testset-linear'
+  #save_dir  : 'testset-linear-processed'
+  #------------------------------ 
+  result_dir: 'pluck-aug'
+  save_dir  : '1024-pluck-aug'
+  #------------------------------ 
+
+  sr: 48000
+  Nx: 256 # upsampled spatial grid size
+  strict: false # whether to assert the optimality in the analytic solution
+

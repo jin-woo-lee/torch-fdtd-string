@@ -140,7 +140,7 @@ Lee, J. W., Choi, M. J., & Lee, K. (2024, April).
 String Sound Synthesizer On Gpu-Accelerated Finite Difference Scheme.
 In *ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)* (pp. 1491-1495). IEEE.
 
-<a id="2">[1]</a> 
+<a id="2">[2]</a> 
 Lee, J. W., Park, J., Choi, M. J., & Lee, K. (2024).
 Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation.
 *arXiv preprint* arXiv:2407.05516.
