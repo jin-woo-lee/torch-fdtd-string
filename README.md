@@ -13,8 +13,9 @@ of mechanical properties and excitation conditions
 based on a finite difference scheme
 (i.e., finite difference time domain)
 and outputs the resulting string sound.
-More details can be found in the paper
-[String Sound Synthesizer on GPU-accelerated Finite Difference Scheme](https://arxiv.org/abs/2311.18505).
+More details can be found in our papers
+[[1]](#1), [[2]](#2).
+
 
 ## Usage
 We encourage you to set `task.root_dir=` argument
@@ -25,6 +26,13 @@ task:
   root_dir: '/path/to/save/results'
 ```
 Everything you simulate will be saved under `/path/to/save/results/{{ task.result_dir }}` directory.
+
+### Dependencies
+Install python and system dependencies 
+```bash
+xargs apt-get install < requirements.sys
+pip install -r requirements.txt
+```
 
 ### Run the string simulator
 StringFDTD-Torch can simulate under your own
@@ -46,7 +54,7 @@ by defining them in a `.yaml` file (or using both of them.)
 We have prepared a typical example configuration in
 `src/configs/experiment/nsynth-like.yaml`.
 The `nsynth-like.yaml` predefines the configurations for
-generating sound samples akin to NSynth [[2]](#2).
+generating sound samples akin to NSynth [[4]](#4).
 It can be run as follows.
 ```bash
 python -m run experiment=nsynth-like task.result_dir=my_simulation
@@ -85,7 +93,7 @@ python -m run experiment=my_experiment task.result_dir=debug
 ```
 
 ### Fundamental frequency pre-correction
-In the string instrument simulation, the pitch (or the fundamental frequency) of the sound can vary depending on the stiffness of the string.  While pitch changes with stiffness have been and continue to be studied for a long time, we have found that the amount of detune in the simulated sounds closely matches the theoretical model proposed by Fletcher [[1]](#1). And even if detune is a natural phenomenon, we provide the ability to pre-correct the pitch based on the theoretical model to achieve the sound at the intended pitch.
+In the string instrument simulation, the pitch (or the fundamental frequency) of the sound can vary depending on the stiffness of the string.  While pitch changes with stiffness have been and continue to be studied for a long time, we have found that the amount of detune in the simulated sounds closely matches the theoretical model proposed by Fletcher [[3]](#3). And even if detune is a natural phenomenon, we provide the ability to pre-correct the pitch based on the theoretical model to achieve the sound at the intended pitch.
 
 <p align="center">
 <img src="res/precorrect.png" width="500">
@@ -110,6 +118,12 @@ python -m run experiment=evaluate task.load_dir='/path/to/simulated/directory/'
 If you use this simulator in your research, please cite the following paper.
 
 ```bib
+@article{lee2024dmsp,
+  title   = {Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation},
+  author  = {Lee, Jin Woo and Park, Jaehyun and Choi, Min Jun and Lee, Kyogu},
+  journal = {arXiv preprint arXiv:2407.05516},
+  year    = {2024}
+}
 @inproceedings{lee2024string,
   title        = {String Sound Synthesize on GPU-accelerated Finite Difference Scheme},
   author       = {Lee, Jin Woo and Choi, Min Jun and Lee, Kyogu},
@@ -122,12 +136,24 @@ If you use this simulator in your research, please cite the following paper.
 
 ## References
 <a id="1">[1]</a> 
+Lee, J. W., Choi, M. J., & Lee, K. (2024, April).
+String Sound Synthesizer On Gpu-Accelerated Finite Difference Scheme.
+In *ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)* (pp. 1491-1495). IEEE.
+
+<a id="2">[1]</a> 
+Lee, J. W., Park, J., Choi, M. J., & Lee, K. (2024).
+Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation.
+*arXiv preprint* arXiv:2407.05516.
+
+<a id="3">[3]</a> 
 Fletcher, H. (1964).
 Normal vibration frequencies of a stiff piano string.
 *The Journal of the Acoustical Society of America*, 36(1), 203-209.
 
-<a id="2">[2]</a> 
+<a id="4">[4]</a> 
 Engel, J., Resnick, C., Roberts, A., Dieleman, S., Norouzi, M., Eck, D., & Simonyan, K. (2017, July).
 Neural audio synthesis of musical notes with wavenet autoencoders.
 In *International Conference on Machine Learning* (pp. 1068-1077). PMLR.
+
+
 

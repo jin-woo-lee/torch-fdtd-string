@@ -23,6 +23,7 @@ proc:
   summarize: false # summarize the evaluation
   process_training_data: false # preprocess simulation results as training data
   train: false # train the neural network
+  test : false # test the neural network
 
 hydra:
   run:

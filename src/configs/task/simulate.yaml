@@ -22,6 +22,7 @@ sr: 48000  # temporal sampling rate
 f0_inf: 20. # minimum fundamental frequency (in Hz); can reduce redundancy in u.
 alpha_inf: 1.0 # minimum nonlinearity; can reduce redundancy in z (or zeta).
 
+randomize_each  : 'batch' # randomize over [batch/iter]
 sampling_f0     : random  # (fix, span, random) input f0
 sampling_kappa  : random  # (fix, span, random) string stiffness
 sampling_alpha  : random  # (fix, span, random) nonlinearity
@@ -55,6 +56,7 @@ string_condition:
   - t60_min_2    : null
   - t60_max_2    : null
   - t60_fixed    : null
+  - t60_diff_max : null
 
 pluck_condition:
   - sampling_p_a : random

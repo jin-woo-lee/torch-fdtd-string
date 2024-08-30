@@ -1,4 +1,4 @@
 defaults:
-  - base
+  - fdtd
 
 excitation: 'pluck'

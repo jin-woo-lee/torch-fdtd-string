@@ -44,6 +44,7 @@ def evaluate(load_dir):
         f0_diff_input  = np.mean(np.abs(f0_input_interpolated  - f0_estimate))
         f0_diff_target = np.mean(np.abs(f0_target_interpolated - f0_estimate))
         f0_diff_modes  = np.mean(np.abs(modes_interpolated[0]  - f0_estimate))
+        f0_diff_ground = np.mean(np.abs(modes_interpolated[0]  - f0_input_interpolated))
 
         front = int(len(f0_estimate) * 0.2)  # 0.2 sec
         f0_diff_input_front = np.mean(np.abs(f0_input_interpolated[:front] - f0_estimate[:front]))
@@ -53,10 +54,11 @@ def evaluate(load_dir):
             f.write(f"f0 diff (input)\t{f0_diff_input:.2f}\n")
             f.write(f"f0 diff (target)\t{f0_diff_target:.2f}\n")
             f.write(f"f0 diff (modes)\t{f0_diff_modes:.2f}\n")
+            f.write(f"f0 diff (ground)\t{f0_diff_ground:.2f}\n")
             f.write(f"f0 diff input front\t{f0_diff_input_front:.2f}\n")
             f.write(f"f0 diff modes front\t{f0_diff_modes_front:.2f}\n")
         #plot_spectrum_uz(f'{load_dir}/{subd}/spectrum.pdf', uout, zout, f0_input, f0_estimate, modes, sr)
-        plot.rainbowgram(f'{load_dir}/{subd}/spec.pdf', uout, sr, colorbar=False)
+        #plot.rainbowgram(f'{load_dir}/{subd}/spec.pdf', uout, sr, colorbar=False)
         plot.rainbowgram(f'{load_dir}/{subd}/f0-naive.pdf',   uout, sr, f0_input=f0_input, colorbar=False)
         plot.rainbowgram(f'{load_dir}/{subd}/f0-precorrected.pdf',   uout, sr, f0_input=f0_target, colorbar=False)
 

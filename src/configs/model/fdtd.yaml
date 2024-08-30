@@ -1,3 +1,4 @@
 defaults:
   - excitation: null # null for random excitation
 
+_name_: fdtd

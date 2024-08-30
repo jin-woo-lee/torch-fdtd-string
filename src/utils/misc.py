@@ -3,6 +3,7 @@ import yaml
 import torch
 import numpy as np
 import torch.nn.functional as F
+from scipy.interpolate import RectBivariateSpline
 
 from contextlib import contextmanager,redirect_stderr,redirect_stdout
 from os import devnull
@@ -124,6 +125,34 @@ def f0_interpolate(f0_1, n_frames, tmax):
     t_1 = np.linspace(0, tmax, f0_1.shape[0])
     return np.interp(t_0, t_1, f0_1)
 
+def interpolate1d(u, xaxis, xvals, k=5):
+    ''' u: (1, Nx)
+        xaxis: (1, Nx_input)
+        xvals: (1, Nx_output)
+        -> (1, Nx_output)
+    '''
+    t = np.arange(k)[:,None] / k
+    rbs = RectBivariateSpline(t, xaxis, u.repeat(k,0), kx=1, ky=k)
+    return rbs(t, xvals, grid=True)[k//2][None,:]
+
+def interpolate(u, taxis, xaxis, xvals, kx=5, ky=5):
+    ''' u: (Nt, Nx)
+        taxis: (Nt, 1)
+        xaxis: (1, Nx_input)
+        xvals: (1, Nx_output)
+        -> (Nt, Nx_output)
+    '''
+    rbs = RectBivariateSpline(taxis, xaxis, u, kx=kx, ky=ky)
+    return rbs(taxis, xvals, grid=True)
+
+def torch_interpolate(x, scale_factor):
+    y = F.interpolate(x, scale_factor=scale_factor)
+    res = x.size(-1) - y.size(-1)
+    if res % 2 == 0: y = F.pad(y, (res//2, res//2))
+    else: y = F.pad(y, (res//2, res//2+1))
+    return y
+
+
 def minmax_normalize(x, dim=-1):
     x_min = x.min(dim, keepdim=True).values
     x = x - x_min
@@ -136,11 +165,31 @@ def get_minmax(x):
         return None, None
     return np.nan_to_num(x.min()), np.nan_to_num(x.max())
 
+def select_with_batched_index(input, dim, index):
+    ''' input: (bs, ..., n, ...)
+        dim  : (int)
+        index: (bs, ..., 1, ...) index to select on dim `dim`
+     -> out  : (bs, ..., 1, ...) for each batch, select `index`-th element on dim `dim`
+    '''
+    assert input.size(0) == index.size(0), [input.shpae, index.shape]
+    bs = input.size(0)
+    ins = input.chunk(bs, 0)
+    idx = index.chunk(bs, 0)
+    out = []
+    for b in range(bs):
+        out.append(batched_index_select(ins[b], dim, idx[b]))
+    return torch.cat(out, dim=0)
+
 def batched_index_select(input, dim, index):
+    ''' input: (..., n, ...)
+        dim  : (int)
+        index: (..., k, ...) index to select on dim `dim`
+     -> out  : (..., k, ...) select k out of n elements on dim `dim`
+    '''
     Nx = len(list(input.shape))
     expanse = [-1 if k==(dim % Nx) else 1 for k in range(Nx)]
     tiler = [1 if k==(dim % Nx) else n for k, n in enumerate(input.shape)]
-    index = index.view(expanse).tile(tiler)
+    index = index.to(torch.int64).view(expanse).tile(tiler)
     return torch.gather(input, dim, index)
 
 def random_index(max_N, idx_N):
@@ -194,10 +243,11 @@ def save_simulation_data(directory, excitation_type, overall_results, constants)
         'alpha': string_params[1],
         'u0'   : string_params[2],
         'v0'   : string_params[3],
-        'f0'   : string_params[4],
-        'pos'  : string_params[5],
-        'T60'  : string_params[6],
-        'target_f0': string_params[7],
+        'p_a'  : string_params[4],
+        'f0'   : string_params[5],
+        'pos'  : string_params[6],
+        'T60'  : string_params[7],
+        'target_f0': string_params[8],
     }
     hammer_dict = {
         'x_H'  : hammer_params[0],
@@ -247,6 +297,22 @@ def save_simulation_data(directory, excitation_type, overall_results, constants)
 
     with open(f"{directory}/simulation_config.yaml", 'w') as f:
         yaml.dump(short_configuration, f, default_flow_style=False)
+
+def add_noise(x, c, vals, eps=1e-5):
+    noise = eps * torch.randn_like(x)
+    for val in vals:
+        mask = torch.where(c == val, torch.ones_like(c), torch.zeros_like(c))
+        x = x + mask * noise
+    return x
+
+def downsample(x, factor=None, size=None):
+    ''' x: (Bs, Nt) -> (Bs, Nt // factor)
+    '''
+    if size is None:
+        size = x.size(1) // factor + bool(x.size(1) % factor)
+    else:
+        assert factor is None, [factor, size]
+    return F.interpolate(x.unsqueeze(1), size=size, mode='linear').squeeze(1)
 
 
 if  __name__=='__main__':

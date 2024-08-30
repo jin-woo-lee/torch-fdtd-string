@@ -6,6 +6,7 @@ using namespace std;
 #include <vector>
 
 #include "misc.h"
+#include "vnv.h"
 #include "bow.h"
 #include "hammer.h"
 
@@ -25,7 +26,6 @@ vector<torch::Tensor> get_derived_vars(
     auto K = IHP.pow(0.5) * (gamma / M_PI);        // set parameters
 
     torch::Tensor h_1, h_2;
-    // stability conditions (eq. 7.26)
     h_1 = lambda_c * (
         (gamma.pow(2) * pow(k, 2.) + pow(gamma.pow(4) * pow(k, 4.) + 16 * K.pow(2) * pow(k, 2.) * (2 * theta_t - 1),.5))
       / (2 * (2 * theta_t - 1))
@@ -33,7 +33,6 @@ vector<torch::Tensor> get_derived_vars(
     auto N_t = torch::floor(1 / h_1).to(kappa_rel.dtype());
     auto h_t = 1 / N_t;
 
-    // stability conditions (eq. 8.28)
     h_2 = lambda_c * gamma * alpha * k;
     auto N_l = torch::floor(1 / h_2).to(kappa_rel.dtype());
     auto h_l = 1 / N_l;
@@ -57,7 +56,8 @@ vector<torch::Tensor> string_step(
     int global_step,                      // global simulation time step
     int local_step,                       // local simulation time step (just for TBPTT)
     float relative_error,                 // discretization error relative to the spatial grid size
-    bool surface_integral) {              // pickup output wave by surface integration
+    bool surface_integral,
+    bool manufactured) {                  // use manufactured solution (used for verification purposes)
     int batch_size = uout.size(0);
 
     //============================== 
@@ -65,8 +65,8 @@ vector<torch::Tensor> string_step(
     //============================== 
     // string parameters
     auto kappa_rel = string_params[0]; auto alpha = string_params[1];
-    auto u0 = string_params[2]; auto v0 = string_params[3];
-    auto f0 = string_params[4]; auto rp = string_params[5]; auto T60 = string_params[6];
+    auto u0 = string_params[2]; auto v0 = string_params[3]; auto p_a = string_params[4];
+    auto f0 = string_params[5]; auto rp = string_params[6]; auto T60 = string_params[7];
 
     // bow control parameters
     auto x_bow = bow_params[0]; auto v_bow = bow_params[1]; auto F_bow = bow_params[2];
@@ -80,12 +80,12 @@ vector<torch::Tensor> string_step(
     float k = constant[0]; float theta_t = constant[1]; float lambda_c = constant[2];
 
     // derived variables
-    auto vars = get_derived_vars(f0.select(1,global_step), kappa_rel, k, theta_t, lambda_c, alpha);
+    auto vars = get_derived_vars(f0.select(1,local_step), kappa_rel, k, theta_t, lambda_c, alpha);
     auto gamma = vars[0]; auto K = vars[1];
     auto N_t = vars[2]; auto h_t = vars[3];   // transverse (u)
     auto N_l = vars[4]; auto h_l = vars[5];   // longitudinal (zeta)
 
-    auto bow_wid_length = wid_b.select(1,global_step) * h_t;
+    auto bow_wid_length = wid_b.select(1,local_step) * h_t;
     auto tol_t = h_t.pow(relative_error);
     auto tol_l = h_l.pow(relative_error);
 
@@ -180,8 +180,8 @@ vector<torch::Tensor> string_step(
     auto C   = sparse_blocks({C_1, C_2, C_3, C_4}, N_t_max, N_l_max);
     auto A_P = sparse_blocks(split_blocks(A_p, t_wid, l_wid), N_t_max, N_l_max);
 
-    auto u_H1 = u_H_out.narrow(1,global_step-1,1).view(-1);
-    auto u_H2 = u_H_out.narrow(1,global_step-2,1).view(-1);
+    auto u_H1 = u_H_out.narrow(1,local_step-1,1).view(-1);
+    auto u_H2 = u_H_out.narrow(1,local_step-2,1).view(-1);
 
     // iterate for implicit scheme
     int iter = 0;
@@ -193,13 +193,17 @@ vector<torch::Tensor> string_step(
     torch::Tensor F_H;
     torch::Tensor d_H;
     torch::Tensor v_rel;
+
+    M_r = M_r / lambda_c;
+    w_H = w_H / lambda_c;
+    //bow_wid_length = bow_wid_length / lambda_c;
     while (not_converged_t or not_converged_l) {
         /* Bow excitation */
         auto Bow = bow_term_rhs(
             N_t, h_t, k, u, u1, u2,
-            x_bow.select(1,global_step),
-            v_bow.select(1,global_step),
-            F_bow.select(1,global_step),
+            x_bow.select(1,local_step),
+            v_bow.select(1,local_step),
+            F_bow.select(1,local_step),
             bow_wid_length, phi_0, phi_1,
             iter);
         auto G_B = Bow[0]; v_rel = Bow[1];
@@ -220,7 +224,12 @@ vector<torch::Tensor> string_step(
                  + torch::matmul(C, w2)
                  +    bow_mask * G_B.nan_to_num()
                  + hammer_mask * G_H.nan_to_num();
-
+        if (manufactured) { // using manufactured solution
+            auto x = domain_x(N_t_max+N_l_max, N_t);
+            auto t = global_step * k;
+            auto f = manufactured_solution_forcing_term(gamma, sig0, K, p_a, x, t);
+            RHS -= f * pow(k, 2);
+        }
         RHS = mask_1d(RHS, N_t+N_l+2, N_t_max+N_l_max);
 
         //auto w = lstsq(LHS, - RHS, A_P, 1e-8);
@@ -245,6 +254,7 @@ vector<torch::Tensor> string_step(
 
         u = new_u;
         z = new_z;
+        iter++;
     }
 
     u = u.squeeze(2);
@@ -286,11 +296,11 @@ vector<torch::Tensor> string_step(
         z_out = (1 - z_rp_frac) * z.gather(1, z_rp_int  ).view({-1,1})
               +      z_rp_frac  * z.gather(1, z_rp_int+1).view({-1,1});
     }
-    uout = assign(uout, u_out.view(-1), global_step, 1);
-    zout = assign(zout, z_out.view(-1), global_step, 1);
-    v_r_out = assign(v_r_out, v_rel.view(-1), global_step, /*dim*/1);
-    F_H_out = assign(F_H_out,   F_H.view(-1), global_step, /*dim*/1);
-    u_H_out = add_in(u_H_out,   u_H.view(-1), global_step, /*dim*/1);
+    uout = assign(uout, u_out.view(-1), local_step, 1);
+    zout = assign(zout, z_out.view(-1), local_step, 1);
+    v_r_out = assign(v_r_out, v_rel.view(-1), local_step, /*dim*/1);
+    F_H_out = assign(F_H_out,   F_H.view(-1), local_step, /*dim*/1);
+    u_H_out = add_in(u_H_out,   u_H.view(-1), local_step, /*dim*/1);
 
     return { uout, zout, state_u, state_z, v_r_out, F_H_out, u_H_out, sig0, sig1 };
 }

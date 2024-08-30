@@ -22,6 +22,7 @@ def process(
     skip_nan=True,
     relative_order=4,
     surface_integral=False,
+    manufactured=False,
 ):
 
     cpp_dir = f'{root_dir}/src/model/cpp'
@@ -59,8 +60,7 @@ def process(
     total_v_r_out = []
     total_F_H_out = []
     total_u_H_out = []
-    while True:
-        if cn > Nt-1: break
+    while cn < Nt-2:
         output_size = min(chunk_size, state_u.size(1) - cn)
         outputs = simulator.forward_fn(
             *chunk_params(
@@ -69,6 +69,7 @@ def process(
                 bow_mask, hammer_mask,
                 consts,
                 relative_order, surface_integral,
+                manufactured, cn,
                 Nt), # keep this `Nt` as the last argument
                 cn, output_size,
             )
@@ -128,6 +129,8 @@ def simulate(
     precision='single',
     relative_order=4,
     surface_integral=False,
+    randomize_each='batch',
+    manufactured=False,
 ):
     # Global parameters
     k = 1 / sr
@@ -148,10 +151,15 @@ def simulate(
     string = simulator.String(
         k, theta_t, lambda_c, sr, length, f0_inf, alpha_inf, batch_size, precision,
         pluck_batch, pluck_mask, hammer_mask, 
+        randomize_each, manufactured,
         **string_kwargs,
     )
-    bow    = simulator.Bow(sr, length, batch_size, precision, **bow_kwargs)
-    hammer = simulator.Hammer(sr, length, batch_size, precision, k, **hammer_kwargs)
+    bow    = simulator.Bow(sr, length, batch_size, precision,
+        randomize_each,
+        **bow_kwargs)
+    hammer = simulator.Hammer(sr, length, batch_size, precision, k,
+        randomize_each,
+        **hammer_kwargs)
 
     if load_config is not None:
         files = glob.glob(f"{load_config}/*.npy")
@@ -200,6 +208,7 @@ def simulate(
         skip_nan,
         relative_order,
         surface_integral,
+        manufactured,
     )
     uout, zout, state_u, state_z, v_r_out, F_H_out, u_H_out, sig0, sig1 = outputs
 
@@ -213,7 +222,16 @@ def run(args, save_dir, model_name, n_samples):
         n_samples  : number of data to simulate
     '''
     sr = args.task.sr
-    theta_t = 0.5 + 2/(np.pi**2) if args.task.theta_t is None else args.task.theta_t   # implicit scheme free parameter (>0.5)
+    #theta_t = 0.5 + 2/(np.pi**2) if args.task.theta_t is None else args.task.theta_t
+    if args.task.sampling_kappa == 'fix':
+        kappa_max = [args.task.string_condition[num]['kappa_fixed'] for num in range(len(args.task.string_condition)) if 'kappa_fixed' in args.task.string_condition[num].keys()][0]
+    else:
+        kappa_max = [args.task.string_condition[num]['kappa_max'] for num in range(len(args.task.string_condition)) if 'kappa_max' in args.task.string_condition[num].keys()][0]
+    if args.task.sampling_f0 == 'fix':
+        f0_min = [args.task.string_condition[num]['f0_fixed'] for num in range(len(args.task.string_condition)) if 'f0_fixed' in args.task.string_condition[num].keys()][0]
+    else:
+        f0_min = [args.task.string_condition[num]['f0_min'] for num in range(len(args.task.string_condition)) if 'f0_min' in args.task.string_condition[num].keys()][0]
+    theta_t = fdm.get_theta(kappa_max, f0_min, sr) if args.task.theta_t is None else args.task.theta_t
 
     string_kwargs = dict(
         sampling_f0     = 'random' if args.task.sampling_f0     is None else args.task.sampling_f0,
@@ -282,6 +300,8 @@ def run(args, save_dir, model_name, n_samples):
                 args.task.precision,
                 args.task.relative_order,
                 args.task.surface_integral,
+                args.task.randomize_each,
+                args.task.manufactured,
             )
 
             if args.task.measure_time and not args.proc.cpu:
@@ -315,7 +335,7 @@ def run(args, save_dir, model_name, n_samples):
 
         kappa = string_params[0].unsqueeze(-1)
         alpha = string_params[1].unsqueeze(-1)
-        f0 = string_params[4]
+        f0 = string_params[5]
         _, _, Nx_t, _, Nx_l, _ = fdm.get_derived_vars(
             f0=f0, kappa_rel=kappa, alpha=alpha,
             k=1/sr, theta_t=theta_t, lambda_c=args.task.lambda_c)

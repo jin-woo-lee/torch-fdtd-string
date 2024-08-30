@@ -5,6 +5,7 @@ torch::Device device();
 torch::Device ntopt();
 torch::Tensor raised_cosine(torch::Tensor, torch::Tensor, torch::Tensor, int);
 torch::Tensor floor_dirac_delta(torch::Tensor, torch::Tensor, int);
+torch::Tensor domain_x(int, torch::Tensor);
 torch::Tensor triangular(int, torch::Tensor, torch::Tensor, torch::Tensor);
 torch::Tensor expand(torch::Tensor, int, int);
 torch::Tensor Interpolator(int, int);

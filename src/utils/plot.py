@@ -13,8 +13,8 @@ from src.utils.audio import rms_normalize
 import wandb
 import soundfile as sf
 
-#plt.rc('text', usetex=True)
-#plt.rc('font', family='serif')
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
 
 def gt_param(TF=5, sr=44100):
     sr = 44100
@@ -90,7 +90,7 @@ def simulation_data(
     ):
     N = min(1000, uout.shape[0])
     
-    kappa, alpha, u0, v0, f0, pos, T60, target_f0 = string_params
+    kappa, alpha, u0, v0, p_a, f0, pos, T60, target_f0 = string_params
     x_b, v_b, F_b, phi_0, phi_1, wid_b = bow_params
     x_H, v_H, u_H, w_H, M_r, alpha_H = hammer_params
 
@@ -215,9 +215,59 @@ def simulation_data(
     plt.close()
 
 
+def state_specs(save_path, analytic, estimate, simulate):
+    tf = 100
+    Nt, Nx = simulate.shape
+    nt = Nt // tf
+    nx = Nx // 2
+    diff_ana = analytic - simulate
+    diff_est = estimate - simulate
+
+    maxval = np.max(np.abs(simulate))
+    maxerr = max(np.max(np.abs(diff_ana)), np.max(np.abs(diff_est)))
+
+    nrows = 3; ncols = 2
+    fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(7,7))
+    s_state = librosa.display.specshow(simulate[0::tf].T, cmap='coolwarm', ax=ax[0,0])
+    a_state = librosa.display.specshow(analytic[0::tf].T, cmap='coolwarm', ax=ax[1,0])
+    e_state = librosa.display.specshow(estimate[0::tf].T, cmap='coolwarm', ax=ax[2,0])
+
+    a_diffs = librosa.display.specshow(diff_ana[0::tf].T, cmap='coolwarm', ax=ax[1,1])
+    e_diffs = librosa.display.specshow(diff_est[0::tf].T, cmap='coolwarm', ax=ax[2,1])
+
+    ax[0,1].plot(simulate[:nt,nx], c='goldenrod', label='FDTD')
+    ax[0,1].plot(analytic[:nt,nx], c='r', label='Modal')
+    ax[0,1].plot(estimate[:nt,nx], c='g', label='Ours')
+
+    a_state.set_clim([-maxval, +maxval])
+    e_state.set_clim([-maxval, +maxval])
+    s_state.set_clim([-maxval, +maxval])
+    a_diffs.set_clim([-maxerr, +maxerr])
+    e_diffs.set_clim([-maxerr, +maxerr])
+    titles = ['FDTD', 'Modal', 'Ours']
+    for i, title in enumerate(titles):
+        ax[i,0].set_ylabel(title)
+    for i in range(nrows):
+        for j in range(ncols):
+            ax[i,j].set_xticks([])
+            ax[i,j].set_yticks([])
+
+    ax[0,1].legend(
+        loc='lower center', bbox_to_anchor=(.95,-0.5),
+        ncol=1, fancybox=True,
+        handlelength=1., handletextpad=0.1, columnspacing=.5, fontsize=7,
+    )
+
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0)
+    fig.subplots_adjust(hspace=0)
+
+    plt.savefig(save_path, bbox_inches='tight')
+    plt.close('all')
+    plt.clf()
 
 #def state_video(save_dir, state_u, sr, framerate=50, trim_front=False, verbose=False, prefix=None):
-def state_video(save_dir, state_u, sr, framerate=100, trim_front=False, verbose=False, prefix=None):
+def state_video(save_dir, state_u, sr, framerate=100, trim_front=False, verbose=False, prefix=None, fname='output'):
     if isinstance(state_u, list):
         state_v = state_u[1]
         state_u = state_u[0]
@@ -258,13 +308,13 @@ def state_video(save_dir, state_u, sr, framerate=100, trim_front=False, verbose=
             '-framerate', f'{framerate}',
             '-i', f'{save_dir}/temp/file%02d.png',
             '-r', '30', '-pix_fmt', 'yuv420p', '-y',
-            f'{save_dir}/{prefix}-silent_video.mp4']
+            f'{save_dir}/{prefix}-{fname}-silent_video.mp4']
         output_video = ['ffmpeg',
-            '-i', f'{save_dir}/silent_video.mp4',
-            '-i', f'{save_dir}/output.wav',
+            '-i', f'{save_dir}/{prefix}-{fname}-silent_video.mp4',
+            '-i', f'{save_dir}/{fname}.wav',
             '-c:v', 'copy', '-map', '0:v', '-map', '1:a',
             '-shortest', '-y',
-            f'{save_dir}/{prefix}-output.mp4']
+            f'{save_dir}/{prefix}-{fname}.mp4']
         silent_video +=  ['-loglevel', 'quiet'] if not verbose else []
         output_video +=  ['-loglevel', 'quiet'] if not verbose else []
         subprocess.call(silent_video, stdout=devnull)
@@ -646,6 +696,52 @@ def scatter_xy(save_path, x, y_dict, xlabel, ylabel, xticks=[], yticks=[]):
     plt.close("all")
 
 
+def scatter_kappa(save_path, total_summary, ss=.3):
+    f0_diffs, f0_ground, kappa, alpha = total_summary
+
+    def moving_average(x, n):
+        assert n % 2 == 1, n
+        x = np.pad(x, (n//2, n//2), 'symmetric')
+        return np.convolve(x, np.ones(n) / n, 'valid')
+
+    sorted_kf = sorted(zip(kappa, f0_ground))
+    sorted_kappa     = [k for k, f in sorted_kf]
+    sorted_f0_ground = [f for k, f in sorted_kf]
+    sorted_kappa     = sorted_kappa[0::40]     + [sorted_kappa[-1]]
+    sorted_f0_ground = sorted_f0_ground[0::40] + [sorted_f0_ground[-1]]
+
+    diff_max = max(f0_diffs) + 3.
+    xticks = [5,10,15,20]
+    yticks = [0,10,20,30,40,50,60]
+
+    fig, ax = plt.subplots(figsize=(2.5,2), nrows=1, ncols=1)
+    #cm = plt.cm.get_cmap('RdYlBu')
+    cm = plt.cm.get_cmap('plasma')
+
+    ax.plot(sorted_kappa, sorted_f0_ground, 'k-', lw=1.0, alpha=0.5)
+    sc = ax.scatter(kappa, f0_diffs, c=alpha, s=ss,
+        vmin=min(alpha), vmax=max(alpha), cmap=cm)
+
+    cbar = plt.colorbar(sc)
+    cbar.ax.set_title(r'$\alpha$')
+    cbar.ax.set_yticks([1,10,20,25])
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+    ax.set_ylim([0,60])
+    for xt in xticks: ax.axvline(xt, c='k', ls='-', lw=0.5, alpha=0.3)
+    for yt in yticks: ax.axhline(yt, c='k', ls='-', lw=0.5, alpha=0.3)
+    ax.set_xlabel('$\kappa$')
+    ax.set_ylabel(r'$|f_0^{(\tt est)} - f_0|$ (Hz)')
+    ax.xaxis.tick_top()
+
+    plt.tight_layout()
+    #plt.subplots_adjust(wspace=0.)
+    #plt.subplots_adjust(hspace=0.)
+    plt.savefig(save_path, bbox_inches='tight', transparent=True, pad_inches=-1e-5)
+    plt.clf()
+    plt.close("all")
+
+
 
 def scatter_pluck(save_path, total_summary, ss=.3, al=0.7):
     cmap = {
@@ -653,48 +749,64 @@ def scatter_pluck(save_path, total_summary, ss=.3, al=0.7):
         '$|f_0^{(\\tt est)} - \hat{f_0}|$' : 'cadetblue',
     }
 
-    fig, ax = plt.subplots(figsize=(2., 1.1), nrows=1, ncols=3)
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-kappa']
+    f0_diffs, kappa, alpha, p_x, p_a = total_summary
+
+    diff_max = max([max(item) for k, item in f0_diffs.items()]) + 3.
+    ncols = 3 if alpha is None else 4
+
+    fig, ax = plt.subplots(figsize=(4., 2), nrows=1, ncols=ncols)
     # kappa
     for y_label in f0_diffs.keys():
         ax[0].scatter(kappa, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
     ax[0].axvline(x=5.88, c='k', ls='--', lw=0.5)
-    ax[0].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[0].axhline(y=1, c='k', ls='--', lw=0.5)
+    #ax[0].axhline(y=6, c='k', ls='--', lw=0.5)
+    #ax[0].axhline(y=1, c='k', ls='--', lw=0.5)
     ax[0].set_xlabel('$\kappa$')
     ax[0].set_ylabel('Detune')
-    ax[0].set_ylim([0, 10])
+    #ax[0].set_ylim([0, 10])
+    ax[0].set_ylim([0, diff_max])
     ax[0].set_xticks([2,5,8])
     ax[0].set_yticks([])
     ax[0].xaxis.tick_top()
 
-    # alpha
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-alpha']
+    # p_x
     for y_label in f0_diffs.keys():
-        ax[1].scatter(alpha, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
-    ax[1].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[1].axhline(y=1, c='k', ls='--', lw=0.5)
-    ax[1].set_xlabel('$\\alpha$')
-    ax[1].set_xlim([0.8,4.2])
-    ax[1].set_ylim([0, 10])
-    ax[1].set_xticks([1,2,3,4])
+        ax[1].scatter(p_x, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
+    #ax[1].axhline(y=6, c='k', ls='--', lw=0.5)
+    #ax[1].axhline(y=1, c='k', ls='--', lw=0.5)
+    ax[1].set_xlabel('$p_x$')
+    ax[1].set_ylim([0, diff_max])
+    ax[1].set_xticks([-0.5, 0])
     ax[1].set_yticks([])
     ax[1].xaxis.tick_top()
+    ax[1].yaxis.tick_right()
 
-    # c0
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-c0']
-    c0 = [item*1e3 for item in c0]
+    # p_a
+    p_a = [x * 1e3 for x in p_a]
     for y_label in f0_diffs.keys():
-        ax[2].scatter(c0, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
-    ax[2].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[2].axhline(y=1, c='k', ls='--', lw=0.5)
-    ax[2].set_xlabel('$c_0\\times10^{3}$')
-    ax[2].set_xlim([0, 11])
-    ax[2].set_ylim([0, 10])
+        ax[2].scatter(p_a, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
+    #ax[2].axhline(y=6, c='k', ls='--', lw=0.5)
+    #ax[2].axhline(y=1, c='k', ls='--', lw=0.5)
+    ax[2].set_xlabel('$p_a\\times10^{3}$')
+    ax[2].set_ylim([0, diff_max])
     ax[2].set_xticks([1, 4, 7, 10])
     ax[2].set_yticks([0,5,10])
     ax[2].xaxis.tick_top()
     ax[2].yaxis.tick_right()
+
+
+    # alpha
+    if alpha is not None:
+        for y_label in f0_diffs.keys():
+            ax[3].scatter(alpha, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
+        ax[3].axhline(y=6, c='k', ls='--', lw=0.5)
+        ax[3].axhline(y=1, c='k', ls='--', lw=0.5)
+        ax[3].set_xlabel('$\\alpha$')
+        ax[3].set_ylim([0, diff_max])
+        #ax[3].set_xticks([1,2,3,4])
+        ax[2].set_yticks([])
+        ax[3].set_yticks([0,5,10])
+        ax[3].xaxis.tick_top()
 
     plt.tight_layout()
     plt.legend(loc='lower center', bbox_to_anchor=(-0.5, -1.2), ncol=2, fancybox=True, handletextpad=0.02, columnspacing=.2, markerscale=5., fontsize=7)
@@ -704,63 +816,6 @@ def scatter_pluck(save_path, total_summary, ss=.3, al=0.7):
     plt.clf()
     plt.close("all")
 
-
-def scatter_pluck_front(save_path, total_summary, ss=.3, al=0.7):
-    cmap = {
-        '$|f_0^{(\\tt est)} - f_0|$'       : 'orchid',
-        '$|f_0^{(\\tt est)} - \hat{f_0}|$' : 'cadetblue',
-    }
-
-    fig, ax = plt.subplots(figsize=(3., 1.5), nrows=1, ncols=3)
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-kappa']
-    # kappa
-    for y_label in f0_diffs.keys():
-        ax[0].scatter(kappa, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
-    ax[0].axvline(x=5.88, c='k', ls='--', lw=0.5)
-    ax[0].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[0].axhline(y=1, c='k', ls='--', lw=0.5)
-    ax[0].set_xlabel('$\kappa$')
-    ax[0].set_ylabel('Detune (Hz)')
-    ax[0].set_ylim([0, 10])
-    ax[0].set_xticks([2,4,6,8])
-    ax[0].set_yticks([])
-    ax[0].xaxis.tick_top()
-
-    # alpha
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-alpha']
-    for y_label in f0_diffs.keys():
-        ax[1].scatter(alpha, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
-    ax[1].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[1].axhline(y=1, c='k', ls='--', lw=0.5)
-    ax[1].set_xlabel('$\\alpha$')
-    ax[1].set_xlim([0.8,4.2])
-    ax[1].set_ylim([0, 10])
-    ax[1].set_xticks([1,2,3,4])
-    ax[1].set_yticks([])
-    ax[1].xaxis.tick_top()
-
-    # c0
-    f0_diffs, kappa, alpha, c0 = total_summary['f0-c0']
-    c0 = [item*1e3 for item in c0]
-    for y_label in f0_diffs.keys():
-        ax[2].scatter(c0, f0_diffs[y_label], c=cmap[y_label], label=y_label, s=ss, alpha=al)
-    ax[2].axhline(y=6, c='k', ls='--', lw=0.5)
-    ax[2].axhline(y=1, c='k', ls='--', lw=0.5)
-    ax[2].set_xlabel('$c_0\\times10^{3}$')
-    ax[2].set_xlim([0, 11])
-    ax[2].set_ylim([0, 10])
-    ax[2].set_xticks([1, 4, 7, 10])
-    ax[2].set_yticks([0,2,4,6,8,10])
-    ax[2].xaxis.tick_top()
-    ax[2].yaxis.tick_right()
-
-    plt.tight_layout()
-    plt.legend(loc='lower center', bbox_to_anchor=(-0.5, -0.75), ncol=2, fancybox=True, handletextpad=0.1, columnspacing=1., markerscale=5.)
-    plt.subplots_adjust(wspace=0.)
-    plt.subplots_adjust(hspace=0.)
-    plt.savefig(save_path, bbox_inches='tight', transparent=True)
-    plt.clf()
-    plt.close("all")
 
 
 def time_experiment(save_path, gpu_summary, cpu_summary):
@@ -868,40 +923,53 @@ def time_experiment(save_path, gpu_summary, cpu_summary):
     plt.close("all")
 
 
-def est_tar_specs(est, tar, plot_path, wave_path, sr=16000):
+def est_tar_specs(est, tar, inp, plot_path, wave_path, sr=16000):
     data = []
     batch_size = est["wav"].shape[0]
     for b in range(batch_size):
         logspecs = []
         difspecs = []
         
-        nrows = 3 if tar is not None else 1;  ncols = 2
-        height = 2*nrows; widths = 7
+        nrows  = 4;  ncols = 2
+        height = 8; widths = 7
         specfig, ax = plt.subplots(nrows, ncols, figsize=(widths,height))
 
-        logspecs.append(librosa.display.specshow(est["logmag"][b].numpy().T,      cmap='magma',ax=ax[0,0] if tar is not None else ax[0]))
-        if tar is not None:
-            diff_0 = tar["logmag"][b] - est["logmag"][b]
-            logspecs.append(librosa.display.specshow(tar["logmag"][b].numpy().T,cmap='magma',ax=ax[1,0]))
-            difspecs.append(librosa.display.specshow(diff_0.numpy().T,            cmap='bwr',  ax=ax[2,0]))
+        diff_0 = tar["logmag"][b] - est["logmag"][b]
+        logspecs.append(
+            librosa.display.specshow(
+            inp["logmag"][b].numpy().T,  cmap='magma', ax=ax[0,0]))
+        logspecs.append(
+            librosa.display.specshow(
+            est["logmag"][b].numpy().T,  cmap='magma', ax=ax[1,0]))
+        logspecs.append(
+            librosa.display.specshow(
+            tar["logmag"][b].numpy().T,  cmap='magma', ax=ax[2,0]))
+        difspecs.append(
+            librosa.display.specshow(
+            diff_0.numpy().T, cmap='bwr',  ax=ax[3,0]))
 
-        logspecs.append(librosa.display.specshow(est["logmel"][b].numpy().T,      cmap='magma',ax=ax[0,1] if tar is not None else ax[1]))
-        if tar is not None:
-            diff_0 = tar["logmel"][b] - est["logmel"][b]
-            logspecs.append(librosa.display.specshow(tar["logmel"][b].numpy().T,cmap='magma',ax=ax[1,1]))
-            difspecs.append(librosa.display.specshow(diff_0.numpy().T,            cmap='bwr',  ax=ax[2,1]))
+        diff_0 = tar["logmel"][b] - est["logmel"][b]
+        logspecs.append(
+            librosa.display.specshow(
+            inp["logmel"][b].numpy().T,  cmap='magma',ax=ax[0,1]))
+        logspecs.append(
+            librosa.display.specshow(
+            est["logmel"][b].numpy().T,  cmap='magma',ax=ax[1,1]))
+        logspecs.append(
+            librosa.display.specshow(
+            tar["logmel"][b].numpy().T,  cmap='magma',ax=ax[2,1]))
+        difspecs.append(
+            librosa.display.specshow(
+            diff_0.numpy().T, cmap='bwr', ax=ax[3,1]))
 
         for spec in logspecs:
             spec.set_clim([-60, 30])
         for spec in difspecs:
             spec.set_clim([-20, 20])
 
-        titles = ['Regenerated', 'Original', 'Difference'] if tar is not None else ['Generated']
+        titles = ['Analytic', 'Estimate', 'Original', 'Difference']
         for i, title in enumerate(titles):
-            if tar is not None:
-                ax[i,0].set_ylabel(title)
-            else:
-                ax[i].set_ylabel(title)
+            ax[i,0].set_ylabel(title)
 
         specfig.tight_layout()
         specfig.subplots_adjust(wspace=0)
@@ -911,118 +979,154 @@ def est_tar_specs(est, tar, plot_path, wave_path, sr=16000):
         plt.close('all')
         plt.clf()
 
-        statfig = None
-        if len(list(est['state'].shape)) == 4:
-            u_states = []
-            z_states = []
-            dustates = []
-            dzstates = []
-            
-            nrows = 5 if tar is not None else 3;  ncols = 2
-            height = 2*nrows; widths = 7
-            statfig, ax = plt.subplots(nrows, ncols, figsize=(widths,height))
-            dif = est["state"] - tar["state"]
-   
-
-            cm = 'coolwarm'
-            Nx = est["state"].size(-2)
-            Nt = est["state"].size(-3)
-            St = int(sr * 10 / 1000)
-            x_k = Nx // 2
-            t_k = Nt // 2
-            u_states.append(librosa.display.specshow(est["state"][b,:Nt,:,0].numpy().T, cmap=cm,ax=ax[0,0]))
-            u_states.append(librosa.display.specshow(tar["state"][b,:Nt,:,0].numpy().T, cmap=cm,ax=ax[1,0]))
-            dustates.append(librosa.display.specshow(dif[b,:Nt,:,0].numpy().T,          cmap=cm,ax=ax[2,0]))
-    
-            z_states.append(librosa.display.specshow(est["state"][b,:Nt,:,1].numpy().T, cmap=cm,ax=ax[0,1]))
-            z_states.append(librosa.display.specshow(tar["state"][b,:Nt,:,1].numpy().T, cmap=cm,ax=ax[1,1]))
-            dzstates.append(librosa.display.specshow(dif[b,:Nt,:,1].numpy().T,          cmap=cm,ax=ax[2,1]))
-
-            for j in range(2):
-                label_tar = 'tar' if j == 0 else None
-                label_est = 'est' if j == 0 else None
-                ax[3,j].axhline(0, c='k', alpha=0.4)
-                ax[4,j].axhline(0, c='k', alpha=0.4)
-                ax[3,j].plot(tar["state"][b,:St,x_k,j], c='k', label=label_tar)
-                ax[3,j].plot(est["state"][b,:St,x_k,j], c='b', label=label_est)
-                ax[4,j].plot(tar["state"][b,  t_k,:,j], c='k')
-                ax[4,j].plot(est["state"][b,  t_k,:,j], c='b')
-
-
-            u_max = tar["state"][b,:St,:,0].abs().max()
-            z_max = tar["state"][b,:St,:,1].abs().max()
-            for stat in u_states: stat.set_clim([-u_max, u_max])
-            for stat in z_states: stat.set_clim([-z_max, z_max])
-            for stat in dustates: stat.set_clim([-u_max/10, u_max/10])
-            for stat in dzstates: stat.set_clim([-u_max/10, u_max/10])
-   
-            for stat in dustates: stat.set_clim([-u_max/10, u_max/10])
-            for stat in dzstates: stat.set_clim([-u_max/10, u_max/10])
-            for i in [3,4]:
-                ax[i,0].set_xticks([]); ax[i,0].yaxis.tick_left()
-                ax[i,1].set_xticks([]); ax[i,1].yaxis.tick_right()
-
-            ax[0,0].set_ylabel("Estimate")
-            ax[1,0].set_ylabel("Original")
-            ax[2,0].set_ylabel("Difference")
-   
-            ax[0,0].set_title(r"$u$")
-            ax[0,1].set_title(r"$\zeta$")
-
-            statfig.legend()
-            statfig.tight_layout()
-            statfig.subplots_adjust(wspace=0)
-            statfig.subplots_adjust(hspace=0)
-    
-            new_name_split = plot_path.split('.')
-            new_name = f'{new_name_split[0]}-state.{new_name_split[1]}'
-            statfig.savefig(new_name)
-            plt.close('all')
-            plt.clf()
-
-        gradfig = None
-        if est['du'] is not None:
-            nrows = 2;  ncols = 1
-            height = 5; widths = 5
-            gradfig, ax = plt.subplots(nrows, ncols, figsize=(widths,height))
-
-            ax[0].plot(est['du'][0][b].flatten(), label=r'$d^2u/dt^2$', c='k', lw=1.3)
-            ax[0].plot(est['du'][1][b].flatten(), label=r'$d^2u/dx^2+\cdots$', c='r', lw=1.0)
-            ax[0].set_ylabel(r'$u$')
-            ax[0].legend()
-
-            ax[1].plot(est['dz'][0][b].flatten(), label=r'$d^2\zeta/dt^2$', c='k', lw=1.3)
-            ax[1].plot(est['dz'][1][b].flatten(), label=r'$d^2\zeta/dx^2+\cdots$', c='r', lw=1.0)
-            ax[1].set_ylabel(r'$\zeta$')
-            ax[1].legend()
-
-            gradfig.tight_layout()
-            gradfig.subplots_adjust(wspace=0)
-            gradfig.subplots_adjust(hspace=0)
-            new_name_split = plot_path.split('.')
-            new_name = f'{new_name_split[0]}-grad.{new_name_split[1]}'
-            gradfig.savefig(new_name)
-            plt.close('all')
-            plt.clf()
+        inp_wav = inp["wav"][b].squeeze()
+        sf.write(wave_path.replace('.wav', f"-{b}-inp.wav"), inp_wav, samplerate=sr)
 
         est_wav = est["wav"][b].squeeze()
         sf.write(wave_path.replace('.wav', f"-{b}-est.wav"), est_wav, samplerate=sr)
-        if tar is not None:
-            tar_wav = tar["wav"][b].squeeze()
-            sf.write(wave_path.replace('.wav', f"-{b}-tar.wav"), tar_wav, samplerate=sr)
+        tar_wav = tar["wav"][b].squeeze()
+        sf.write(wave_path.replace('.wav', f"-{b}-tar.wav"), tar_wav, samplerate=sr)
 
         d  = [ wandb.Image(specfig) ]
-        d += [ wandb.Image(statfig) ] if statfig is not None else []
-        d += [ wandb.Image(gradfig) ] if gradfig is not None else []
+        d += [ wandb.Audio(inp_wav, sample_rate=sr) ]
         d += [ wandb.Audio(est_wav, sample_rate=sr) ]
-        d += [ wandb.Audio(tar_wav, sample_rate=sr) ] if tar is not None else []
+        d += [ wandb.Audio(tar_wav, sample_rate=sr) ]
         data.append(d)
-        plt.close()
 
     columns  = ["spec"]
-    columns += ["state"] if statfig is not None else []
-    columns += ["grad"] if gradfig is not None else []
-    columns += ["regenerated", "original"]
+    columns += ["analytic", "estimate", "original"]
+    return {
+        "columns": columns,
+        "data": data,
+    }
+
+
+def rde_specs(factors, est, sim, plot_path, wave_path, sr=16000):
+    data = []
+    num_factors = len(factors)
+    # plot_path = f'test/plot/rde.png'
+    mag_path = plot_path.replace('rde.png', 'rde-mag.png')
+    mel_path = plot_path.replace('rde.png', 'rde-mel.png')
+    seu_path = plot_path.replace('rde.png', 'rde-state-pinn-u.png')
+    sez_path = plot_path.replace('rde.png', 'rde-state-pinn-z.png')
+    ssu_path = plot_path.replace('rde.png', 'rde-state-fdtd-u.png')
+    ssz_path = plot_path.replace('rde.png', 'rde-state-fdtd-z.png')
+
+    #============================== 
+    # plot logmag 
+    #============================== 
+    specs = []
+    magfig, ax = plt.subplots(nrows=num_factors, ncols=2, figsize=(5,7))
+    for i in range(num_factors):
+        specs.append(librosa.display.specshow(
+            sim["logmag"][i].numpy().T, cmap='magma',ax=ax[i,0]))
+        specs.append(librosa.display.specshow(
+            est["logmag"][i].numpy().T, cmap='magma',ax=ax[i,1]))
+    for spec in specs: spec.set_clim([-60, 30])
+    for i, fc in enumerate(factors): ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+    ax[0,0].set_title('FDTD')
+    ax[0,1].set_title('PINN')
+    magfig.tight_layout()
+    magfig.subplots_adjust(wspace=0)
+    magfig.subplots_adjust(hspace=0)
+    magfig.savefig(mag_path)
+    plt.close('all')
+    plt.clf()
+
+    #============================== 
+    # plot logmel 
+    #============================== 
+    specs = []
+    melfig, ax = plt.subplots(nrows=num_factors, ncols=2, figsize=(5,7))
+    for i in range(num_factors):
+        specs.append(librosa.display.specshow(
+            sim["logmel"][i].numpy().T, cmap='magma',ax=ax[i,0]))
+        specs.append(librosa.display.specshow(
+            est["logmel"][i].numpy().T, cmap='magma',ax=ax[i,1]))
+    for spec in specs: spec.set_clim([-60, 30])
+    for i, fc in enumerate(factors): ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+    ax[0,0].set_title('FDTD')
+    ax[0,1].set_title('PINN')
+    melfig.tight_layout()
+    melfig.subplots_adjust(wspace=0)
+    melfig.subplots_adjust(hspace=0)
+    melfig.savefig(mel_path)
+    plt.close('all')
+    plt.clf()
+
+    #============================== 
+    # plot state 
+    #============================== 
+    u_states = []; dustates = []
+    z_states = []; dzstates = []
+    
+    eu_fig, eu_ax = plt.subplots(num_factors, 2, figsize=(7,7))
+    ez_fig, ez_ax = plt.subplots(num_factors, 2, figsize=(7,7))
+    su_fig, su_ax = plt.subplots(num_factors, 2, figsize=(7,7))
+    sz_fig, sz_ax = plt.subplots(num_factors, 2, figsize=(7,7))
+
+    u_max = 0
+    z_max = 0
+
+    cm = 'coolwarm'
+    for i, fc in enumerate(factors):
+        e_dif = est["state"][i] - est["state"][-1]
+        s_dif = sim["state"][i] - sim["state"][-1]
+        Nt = int(sr * 30 / 1000)
+        u_states.append(librosa.display.specshow(sim["state"][i][:Nt,:,0].numpy().T, cmap=cm,ax=su_ax[i,0]))
+        u_states.append(librosa.display.specshow(est["state"][i][:Nt,:,0].numpy().T, cmap=cm,ax=eu_ax[i,0]))
+        dustates.append(librosa.display.specshow(s_dif[:Nt,:,0].numpy().T,           cmap=cm,ax=su_ax[i,1]))
+        dustates.append(librosa.display.specshow(e_dif[:Nt,:,0].numpy().T,           cmap=cm,ax=eu_ax[i,1]))
+        
+        z_states.append(librosa.display.specshow(sim["state"][i][:Nt,:,1].numpy().T, cmap=cm,ax=sz_ax[i,0]))
+        z_states.append(librosa.display.specshow(est["state"][i][:Nt,:,1].numpy().T, cmap=cm,ax=ez_ax[i,0]))
+        dzstates.append(librosa.display.specshow(s_dif[:Nt,:,1].numpy().T,           cmap=cm,ax=sz_ax[i,1]))
+        dzstates.append(librosa.display.specshow(e_dif[:Nt,:,1].numpy().T,           cmap=cm,ax=ez_ax[i,1]))
+
+        u_max = max(u_max, sim["state"][i][:Nt,:,0].abs().max(), est["state"][i][:Nt,:,0].abs().max())
+        z_max = max(z_max, sim["state"][i][:Nt,:,1].abs().max(), est["state"][i][:Nt,:,1].abs().max())
+        su_ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+        eu_ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+        sz_ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+        ez_ax[i,0].set_ylabel(r"$x\times" + f"{fc}$")
+
+    for stat in u_states: stat.set_clim([-u_max, u_max])
+    for stat in z_states: stat.set_clim([-z_max, z_max])
+    for stat in dustates: stat.set_clim([-u_max/10, u_max/10])
+    for stat in dzstates: stat.set_clim([-z_max/10, z_max/10])
+   
+    eu_fig.tight_layout(); eu_fig.subplots_adjust(wspace=0); eu_fig.subplots_adjust(hspace=0)
+    ez_fig.tight_layout(); ez_fig.subplots_adjust(wspace=0); ez_fig.subplots_adjust(hspace=0)
+    su_fig.tight_layout(); su_fig.subplots_adjust(wspace=0); su_fig.subplots_adjust(hspace=0)
+    sz_fig.tight_layout(); sz_fig.subplots_adjust(wspace=0); sz_fig.subplots_adjust(hspace=0)
+    
+    eu_fig.savefig(seu_path)
+    ez_fig.savefig(sez_path)
+    su_fig.savefig(ssu_path)
+    sz_fig.savefig(ssz_path)
+    plt.close('all')
+    plt.clf()
+
+    for i, factor in enumerate(factors):
+        fstr = f"{factor:.1f}".replace('.', '_')
+        # wave_path = f'test/wave/rde.wav'
+        we_path = wave_path.replace('rde.wav', f'rde-pinn-{fstr}.wav')
+        ws_path = wave_path.replace('rde.wav', f'rde-fdtd-{fstr}.wav')
+        est_wav = est["wav"][i].squeeze()
+        sim_wav = sim["wav"][i].squeeze()
+        sf.write(we_path, est_wav, samplerate=sr)
+        sf.write(ws_path, sim_wav, samplerate=sr)
+
+    d  = [ wandb.Image(magfig) ]; columns  = ["logmag"]
+    d += [ wandb.Image(melfig) ]; columns += ["logmel"]
+    d += [ wandb.Image(eu_fig) ]; columns += ["PINN-u"]
+    d += [ wandb.Image(su_fig) ]; columns += ["FDTD-u"]
+    d += [ wandb.Image(ez_fig) ]; columns += ["PINN-z"]
+    d += [ wandb.Image(sz_fig) ]; columns += ["FDTD-z"]
+    d += [ wandb.Audio(est_wav, sample_rate=sr) ]; columns += ["PINN wav"]
+    d += [ wandb.Audio(sim_wav, sample_rate=sr) ]; columns += ["FDTD wav"]
+    data.append(d)
+
     return {
         "columns": columns,
         "data": data,

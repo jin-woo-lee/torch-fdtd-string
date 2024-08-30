@@ -15,13 +15,10 @@ task:
   batch_size: 1
   relative_order: 8
   precision: double
-  #length: 0.2
-  length: 2.
+  length: .2
   chunk_length: 0.001
   write_during_process: true
   normalize_output: true
-
-  theta_t: 1
 
   #sampling_f0     : random
   sampling_f0     : fix
@@ -30,29 +27,68 @@ task:
   sampling_pickup : random
   sampling_T60    : fix
 
+  manufactured: true
   precorrect: false
+  #f0_inf: 60
+  #===== 
+  f0_inf: 55 # 67 33 16 (kappa 0.03)
+  #f0_inf: 110 # 46 23 11 (kappa 0.03)
+  #f0_inf: 220 # 32 16 8 (kappa 0.03)
+  #f0_inf: 440 # 21 10 5 (kappa 0.03)
+  #===== 
+  #f0_inf: 59 # 64 32 16 (kappa 0.03)
+  #f0_inf: 220 # 32 16 8 (kappa 0.03)
+  #f0_inf: 650 # 16 8 4 (kappa 0.03)
+  #===== 
+  #f0_inf: 145 # 64 32 16 (kappa 0.01)
+  #f0_inf: 400 # 32 16 8 (kappa 0.01)
+  #f0_inf: 880 # 16 8 4 (kappa 0.01)
+  #===== 
   string_condition:
-    #- f0_fixed: 440.0 # A1
-    - f0_fixed: 29.8
-    - f0_mod_max  : 0.02
-    #------------------------------ 
-    #- lossless    : true
-    #- kappa_min   : 0.
-    #- kappa_max   : 0.
-    #- kappa_fixed : 0.
+    #- f0_fixed: 60
+    #===== 
+    - f0_fixed: 55 # 64 32 16 (kappa 0.03)
+    #- f0_fixed: 110 # 64 32 16 (kappa 0.03)
+    #- f0_fixed: 220 # 64 32 16 (kappa 0.03)
+    #- f0_fixed: 440 # 64 32 16 (kappa 0.03)
+    #===== 
+    #- f0_fixed: 59 # 64 32 16 (kappa 0.03)
+    #- f0_fixed: 220 # 32 16 8 (kappa 0.03)
+    #- f0_fixed: 650 # 16 8 4 (kappa 0.03)
+    #===== 
+    #- f0_fixed: 145 # 64 32 16 (kappa 0.01)
+    #- f0_fixed: 400 # 32 16 8 (kappa 0.01)
+    #- f0_fixed: 880 # 16 8 4 (kappa 0.01)
+    #===== 
+    #===== 
+    - f0_mod_max  : 0
     #------------------------------ 
     - lossless    : false
-    - t60_fixed   : 5.
+    #===== 
+    - t60_fixed   : 20.
+    #===== 
+    #- t60_fixed   : 10.
+    #===== 
+    #- t60_fixed   : 5
+    #------------------------------ 
     - kappa_min   : 0.03
     - kappa_max   : 0.03
     - kappa_fixed : 0.03
+    #===== 
+    #- kappa_min   : 0.02
+    #- kappa_max   : 0.02
+    #- kappa_fixed : 0.02
+    #===== 
+    #- kappa_min   : 0.01
+    #- kappa_max   : 0.01
+    #- kappa_fixed : 0.01
+    #===== 
     #------------------------------ 
     - kappa_hammer: 0.
     - alpha_fixed : 1.
     - alpha_min   : 1.
     - alpha_max   : 1.
-  #f0_inf: 440.0 # A1
-  f0_inf: 29.8
+
   alpha_inf: 1
 
   pluck_condition:

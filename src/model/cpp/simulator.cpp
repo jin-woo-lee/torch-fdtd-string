@@ -22,6 +22,8 @@ vector<torch::Tensor> forward_fn(
     vector<float> constant,               // global constants
     float relative_error,                 // order of the discretization error
     bool surface_integral,                // pickup configuration
+    bool manufactured,                    // verification configuration (using manufactured solution)
+    int n_0,                              // time index for global step
     int Nt) {                             // number of simulation samples
 
     int batch_size = state_u.size(0);
@@ -40,7 +42,8 @@ vector<torch::Tensor> forward_fn(
             uout, zout, state_u, state_z, v_b, F_H,
             string_params, bow_params, hammer_params,
             bow_mask, hammer_mask,
-            constant, n, n, relative_error, surface_integral);
+            constant, n+n_0, n, relative_error, surface_integral,
+            manufactured);
         uout = results[0];
         zout = results[1];
         state_u = results[2];

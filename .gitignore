@@ -16,17 +16,30 @@ data/*/*.pdf
 data/*/sine-*
 data/*/sample-*
 
+
+
 src/configs/experiment/demo-*
 src/configs/experiment/discretize-convergence.yaml
 src/configs/experiment/friction-coefficient.yaml
 src/configs/experiment/variation-*
 src/configs/experiment/zeroshot-*
 src/configs/experiment/process_training_*.yaml
+src/configs/experiment/analyze-convnext*.yaml
+src/configs/experiment/synth-*.yaml
+src/configs/experiment/test-*.yaml
 src/configs/model/mlp.yaml
 src/configs/model/wavenet.yaml
+src/configs/model/convnext.yaml
+src/configs/model/ddsp.yaml
+src/configs/model/dmsp.yaml
+src/configs/model/gru.yaml
+src/configs/model/trainer.yaml
+src/configs/model/transformer.yaml
+src/configs/model/unet.yaml
 src/configs/framework/*.yaml
 src/configs/task/process_training_*.yaml
-src/configs/task/train_*.yaml
+src/configs/task/analyze.yaml
+src/configs/task/synthesize.yaml
 src/configs/optimizer
 src/configs/scheduler
 
@@ -38,8 +51,12 @@ src/trainer.py
 src/dataset
 src/model/nn
 src/task/process_training_data.py
-src/task/train_zeroshot.py
+src/task/process_alpha_data.py
+src/task/adv.py
+src/task/analyze.py
+src/task/synthesize.py
 src/utils/diffusion.py
+src/utils/ddsp.py
 src/utils/pde.py
 src/utils/optimizer.py
 src/utils/objective.py
@@ -54,4 +71,5 @@ cmd
 .*.cpp.swp
 */.*.cpp.swp
 */*/.*.cpp.swp
+
 

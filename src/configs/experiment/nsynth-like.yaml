@@ -1,28 +1,28 @@
 # @package _global_
 defaults:
-  - /model: base
+  - /model: fdtd
   - /task: simulate
 
 model: 
-  excitation: null
+  excitation: pluck
 
 proc: 
   num_workers: 4
-  #num_workers: 32
 
 task: 
   randomize_name: true
   num_samples: 32000
-  batch_size: 8
+  batch_size: 24
   relative_order: 4
   precision: single
   length: 1.0
-  chunk_length: 0.001
+  chunk_length: 1.0
 
   dont_save_silence: false
   write_during_process: false
   normalize_output: true
 
+  randomize_each  : batch
   sampling_f0     : random
   sampling_kappa  : random
   sampling_alpha  : random
@@ -30,19 +30,22 @@ task:
   sampling_T60    : random
 
   string_condition:
-    - f0_min: 27.5 # A0
+    - f0_min: 98.00 # G2
     - f0_max: 440.0 # A4
-    - f0_diff_max : 0
-    - f0_mod_max  : 0.02
+    #- f0_diff_max : 30
+    #- f0_mod_max  : 0.02
+    - f0_diff_max : 30
+    - f0_mod_max  : 0.08
     - kappa_min   : 0.01
     - kappa_max   : 0.03
-    - kappa_fixed : 0.03
-    - kappa_hammer: 0
-    - alpha_fixed : 25.
-    - alpha_min   : 10.
+    - alpha_min   : 1.
     - alpha_max   : 25.
-  f0_inf: 27.5 # A0
-  alpha_inf: 10
+    - t60_min_1 : 10.
+    - t60_max_1 : 25.
+    - t60_min_2 : 10.
+    - t60_max_2 : 30.
+  f0_inf: 98.00 # G2
+  alpha_inf: 1
 
   pluck_condition:
     - sampling_p_a : random
@@ -57,7 +60,6 @@ task:
 
   load_config: null
 
-  #plot: false
-  plot: true
+  plot: false
   #plot_state: true
 

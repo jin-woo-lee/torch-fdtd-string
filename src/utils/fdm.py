@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -108,7 +109,6 @@ def get_derived_vars(f0, kappa_rel, k, theta_t, lambda_c, alpha):
     else:
         lambda_c = int(1) if lambda_c <= 1 else lambda_c
 
-    # stability conditions (eq. 7.26)
     h = lambda_c * sqrt( \
         (gamma**2 * k**2 + sqrt(gamma**4 * k**4 + 16 * K**2 * k**2 * (2 * theta_t - 1))) \
       / (2 * (2 * theta_t - 1)) \
@@ -116,12 +116,29 @@ def get_derived_vars(f0, kappa_rel, k, theta_t, lambda_c, alpha):
     N_t = torch.floor(1/h) if isinstance(h, torch.Tensor) else int(1 / h)
     h_t = 1 / N_t
 
-    # stability conditions (eq. 8.28)
     h = lambda_c * gamma * alpha * k
     N_l = torch.floor(1/h) if isinstance(h, torch.Tensor) else int(1 / h)
     h_l = 1 / N_l
 
     return gamma, K, N_t, h_t, N_l, h_l
+
+def get_theta(kappa_max, f0_inf, sr, lambda_c=1):
+    ''' theta gets larger as...
+        (1) f0 gets larger
+        (2) kappa gets smaller
+    '''
+    gamma = 2 * f0_inf
+    kappa = gamma * kappa_max
+    k = 1 / sr
+
+    R = ((gamma**4 * k**2 + 4*kappa**2 * math.pi**2) / (gamma**4 * k**2))**.5
+    S = gamma**4 * k**2 * lambda_c**2 / (4 * kappa**2 * math.pi**4)
+    expr_1 = 2 * S * lambda_c**2 * (R-1)**2
+    expr_2 = math.pi**2 * S * (R-1)
+    theta = 0.5 + expr_1 + expr_2
+    assert theta < 1, theta
+    
+    return theta
 
 def stiff_string_modes(f0, kappa_rel, p_max=1):
     ''' Returns a list of modes of an ideal lossless stiff string.
@@ -143,7 +160,7 @@ def stiff_string_modes(f0, kappa_rel, p_max=1):
 if __name__=='__main__':
     sr = 48000
     k = 1/sr
-    tt = 0.5 + 2/(np.pi**2)
+    #tt = 0.5 + 2/(np.pi**2)
 
     #for f0 in [20,40,80,160,320]:
     #    _, _, N_t, _, N_l, _ = get_derived_vars(f0=f0, kappa_rel=0.03, k=k, theta_t=tt, alpha=1)
@@ -178,17 +195,21 @@ if __name__=='__main__':
 
     #------------------------------ 
 
+    #tt = 1
     #------------------------------ 
-    #f0 = 55 * torch.ones(sr).view(1,-1)
-    #lam = 1.03
-    #als = 10
-    #kappa_rel = 0.08
-    #------------------------------ 
-    f0 = 29.8 * torch.ones(sr).view(1,-1)
-    lam = 2
+    f0 = 55 * torch.ones(sr).view(1,-1)
+    lam = 1.01
     als = 1
-    kappa_rel = 0
+    #kappa_rel = 0.03
+    #kappa_rel = 0.02
+    kappa_rel = 0.01
     #------------------------------ 
+    #f0 = 60. * torch.ones(sr).view(1,-1)
+    #lam = 2
+    #als = 5
+    #kappa_rel = 0.03
+    #------------------------------ 
+    tt = get_theta(kappa_rel, f0.min(), sr, lam)
     _, _, N_t, _, N_l, _ = get_derived_vars(f0=f0, kappa_rel=kappa_rel, k=k, theta_t=tt, lambda_c=1, alpha=als)
     print(N_t[0,0], N_l[0,0])
     _, _, N_t, _, N_l, _ = get_derived_vars(f0=f0, kappa_rel=kappa_rel, k=k, theta_t=tt, lambda_c=lam, alpha=als)

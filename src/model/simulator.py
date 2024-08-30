@@ -12,6 +12,7 @@ class String(nn.Module):
     def __init__(
         self, k, theta_t, lambda_c, sr, length, f0_inf, alpha_inf, batch_size, precision,
         pluck_batch=False, pluck_mask=None, hammer_mask=None,
+        randomize_each='batch', manufactured=False,
         **string_kwargs):
         super().__init__()
         ''' state_u Tensor(float) : initial transverse state   with shape (batch_size, Nt, Nx_t,)
@@ -44,12 +45,13 @@ class String(nn.Module):
         self.hammer_mask = hammer_mask.view(-1) if hammer_mask is not None else torch.zeros((batch_size,), dtype=self.dtype)
         self.f0_inf = f0_inf
         self.alpha_inf = alpha_inf
+        self.randomize_each = randomize_each
+        self.manufactured = manufactured
 
         self.plucked = None
         self.initialize_config(**string_kwargs)
         self.initialize_state()
 
-    #def forward(self, verbose=True):
     def forward(self, verbose=False):
         if verbose:
             u0_maxvals = self.u0.flatten(1).max(dim=1).values
@@ -81,8 +83,17 @@ class String(nn.Module):
 
         return [self.state_u, self.state_z,
                 self.kappa, self.alpha,
-                self.u0, self.v0, self.f0,
+                self.u0, self.v0, self.p_a, self.f0,
                 self.pos, self.T60, self.target_f0]
+
+    def random_batch(self, min_val, max_val, size=None, weight=None):
+        size = (self.Bs,) if size is None else size
+        if self.randomize_each == 'batch':
+            out = ms.random_uniform(min_val, max_val, size=size, dtype=self.dtype, weight=weight)
+        else: # randomized for each iteration
+            out = ms.random_uniform(min_val, max_val, size=1, dtype=self.dtype, weight=weight)
+            if out.size() != size: out = out.repeat(size)
+        return out
 
     def dump_parameter(self, par, val):
         val = torch.from_numpy(val).to(self.dtype) if isinstance(val, np.ndarray) else val
@@ -114,8 +125,8 @@ class String(nn.Module):
             alpha_min=1, alpha_max=25, alpha_fixed=3.,
             pos_min=0.3, pos_max=0.7, pos_fixed=0.5,
             lossless=False,  # lossless string, without randomization
-            t60_min_1=10., t60_max_1=20., t60_min_2=20., t60_max_2=20.,
-            t60_fixed=20.,
+            t60_min_1=20., t60_max_1=30., t60_min_2=30., t60_max_2=30.,
+            t60_fixed=20., t60_diff_max=5.,
             #---------- 
             sampling_p_a='random', sampling_p_x='random',
             p_a_min=0.001, p_a_max=0.01, p_a_fixed=0.01, # pluck amplitude
@@ -142,7 +153,7 @@ class String(nn.Module):
         self.initialize_f0(sampling_f0, f0_min, f0_max, f0_diff_max, f0_mod_max, f0_fixed)
         self.initialize_alpha(sampling_alpha, alpha_min, alpha_max, alpha_fixed)
         self.initialize_pickup_position(sampling_pickup, pos_min, pos_max, pos_fixed)
-        self.initialize_T60(sampling_T60, lossless, t60_min_1, t60_max_1, t60_min_2, t60_max_2, t60_fixed)
+        self.initialize_T60(sampling_T60, lossless, t60_min_1, t60_max_1, t60_min_2, t60_max_2, t60_fixed, t60_diff_max)
 
         self.sampling_p_a = sampling_p_a
         self.sampling_p_x = sampling_p_x
@@ -161,7 +172,13 @@ class String(nn.Module):
         f0_b = self.f0.min(-1, keepdim=True).values.view(-1)
         nx_t = fdm.get_derived_vars(f0_b, self.kappa, self.k, self.theta_t, self.lambda_c, self.alpha)[2].view(-1,1,1)
 
-        if self.pluck_profile == 'triangular':
+        if self.manufactured:
+            # manufactured solution's initial condition
+            p_x = torch.sign(p_x) * 0.5 # (B, T, 1)
+            tr = ms.triangular(self.Nx_t+1, nx_t+1, p_x, torch.ones_like(p_x)) - 1
+            mu = np.pi
+            u0 = p_a * torch.cos(mu*tr/2).pow(2) # (B, T, Nx_t)
+        elif self.pluck_profile == 'triangular':
             # triangular initial condition
             u0 = ms.triangular(self.Nx_t+1, nx_t+1, p_x, p_a) # (B, T, Nx_t)
         elif self.pluck_profile == 'smooth':
@@ -175,12 +192,15 @@ class String(nn.Module):
                 nx_t.flatten()+1).transpose(1,2) * torch.sign(p_x)
 
         v0 = torch.zeros_like(u0)
+        p_a = p_a.abs().flatten(1).max(1).values.view(-1,1,1)
 
         state_u, state_z = fdm.initialize_state(u0, v0, self.Nt, self.Nx_t, self.Nx_l, self.k, dtype=self.dtype)
         self.register_buffer('u0',  nn.Parameter(u0,  requires_grad=False))
         self.register_buffer('v0',  nn.Parameter(v0,  requires_grad=False))
         self.register_buffer('state_u', nn.Parameter(state_u, requires_grad=False))
         self.register_buffer('state_z', nn.Parameter(state_z, requires_grad=False))
+        self.register_buffer('p_a', nn.Parameter(p_a, requires_grad=False))
+
 
     def initialize_f0(
             self, sampling='random',
@@ -195,19 +215,21 @@ class String(nn.Module):
                        frequency of the simulated sound.
         '''
         if sampling=='random':
-            f0_con = control.constant(ms.random_uniform(f0_min, f0_max, size=self.Bs, dtype=self.dtype), self.Nt, dtype=self.dtype)
-
-            f0_1 = ms.random_uniform(f0_min, f0_max, size=self.Bs, dtype=self.dtype)
-            f0_2 = ms.random_uniform(f0_min, f0_max, size=self.Bs, dtype=self.dtype).clamp(f0_1 - f0_diff_max, f0_1 + f0_diff_max)
-            f0_lin = control.linear(f0_1, f0_2, self.Nt)
+            f0_con = control.constant(self.random_batch(f0_min, f0_max), self.Nt, dtype=self.dtype)
 
             # linearly-varying f0 (set `f0_diff_max=0` to disable this)
-            ti_mask = torch.randn((self.Bs,)).ge(0.5).view(-1,1)
-            f0 = f0_lin * ti_mask \
-               + f0_con * ti_mask.logical_not()
+            f0_1 = self.random_batch(f0_min, f0_max)
+            f0_2 = self.random_batch(f0_min, f0_max).clamp(f0_1 - f0_diff_max, f0_1 + f0_diff_max)
+            f0_lin = control.linear(f0_1, f0_2, self.Nt)
+
+            tv_th = 0.5 if self.randomize_each == 'batch' else 2
+            tv_mask = torch.randn((self.Bs,)).ge(tv_th).view(-1,1)
+            f0 = f0_lin * tv_mask \
+               + f0_con * tv_mask.logical_not()
 
             # vibrato (set `f0_mod_max=0` to disable this)
-            vb_mask = torch.randn((self.Bs,)).ge(0.5).view(-1,1)
+            vb_th = 0.5 if self.randomize_each == 'batch' else 2
+            vb_mask = torch.randn((self.Bs,)).ge(vb_th).view(-1,1)
             vb = control.vibrato(f0, 1/self.sr, mf=[3.,5.], ma=f0_mod_max)
             f0 = f0 * vb_mask \
                + vb * vb_mask.logical_not()
@@ -258,8 +280,7 @@ class String(nn.Module):
 
     def initialize_kappa(self, sampling='random', kappa_min=0, kappa_max=0.08, kappa_fixed=0.08, kappa_hammer=0.):
         if sampling=='random':
-            kappa_r = (kappa_max - kappa_min) * torch.rand(size=(self.Bs,)).to(self.dtype) \
-                    + kappa_min
+            kappa_r = self.random_batch(kappa_min, kappa_max)
             kappa_h = kappa_hammer + kappa_r
             kappa_1 = kappa_r * self.hammer_mask.logical_not() \
                     + kappa_h * self.hammer_mask
@@ -276,9 +297,7 @@ class String(nn.Module):
     def initialize_alpha(self, sampling='random', alpha_min=1, alpha_max=3, alpha_fixed=3.):
         ''' larger alpha gives more "boing"-like sound (smaller tension) '''
         if sampling=='random':
-            alpha_1 = (alpha_max - alpha_min) * torch.rand(size=(self.Bs,)).to(self.dtype) \
-                    + alpha_min
-            alpha   = alpha_1
+            alpha = self.random_batch(alpha_min, alpha_max)
         elif sampling=='equidist':
             alpha = ms.equidistant(alpha_min, alpha_max, self.Bs)
         else: # fixed
@@ -309,14 +328,14 @@ class String(nn.Module):
             self.plucked = batch_mask * time_mask
 
         if self.sampling_p_a=='random':
-            p_a = ms.random_uniform(self.p_a_min, self.p_a_max, size=(self.Bs,self.Nt), dtype=self.dtype)
+            p_a = self.random_batch(self.p_a_min, self.p_a_max, size=(self.Bs,self.Nt))
         elif self.sampling_p_a=='equidist':
             p_a = ms.equidistant(self.p_a_min, self.p_a_max, self.Bs).view(-1,1).tile(1,self.Nt)
         else: # fixed
             p_a = self.p_a_fixed * torch.ones(size=(self.Bs,self.Nt), dtype=self.dtype)
 
         if self.sampling_p_x=='random':
-            p_x = ms.random_uniform(self.p_x_min, self.p_x_max, size=(self.Bs,self.Nt), dtype=self.dtype)
+            p_x = self.random_batch(self.p_x_min, self.p_x_max, size=(self.Bs,self.Nt))
         elif self.sampling_p_x=='equidist':
             p_x = ms.equidistant(self.p_x_min, self.p_x_max, self.Bs).view(-1,1).tile(1,self.Nt)
         else: # fixed
@@ -328,7 +347,7 @@ class String(nn.Module):
 
     def initialize_pickup_position(self, sampling='random', pos_min=0.3, pos_max=0.7, pos_fixed=0.5):
         if sampling=='random':
-            pos = ms.random_uniform(pos_min, pos_max, size=self.Bs, dtype=self.dtype)
+            pos = self.random_batch(pos_min, pos_max)
         elif sampling=='equidist':
             pos = ms.equidistant(pos_min, pos_max, self.Bs)
         else: # fix
@@ -336,16 +355,17 @@ class String(nn.Module):
         self.register_buffer('pos', nn.Parameter(pos, requires_grad=False))
 
     def initialize_T60(self, sampling='random', lossless=False,
-            t60_min_1=10., t60_max_1=20., t60_min_2=20., t60_max_2=20.,
-            t60_fixed=20.,):
+            t60_min_1=20., t60_max_1=30., t60_min_2=30., t60_max_2=30.,
+            t60_fixed=20., t60_diff_max=5.):
         if sampling=='random':
             T60_freq_min = (1/240) * self.sr / 2; T60_freq_max = (1/4) * self.sr / 2
-            T60_time_min = 5.; T60_time_max = 10.; T60_diff_max = 2.
+            T60_time_min = t60_min_1; T60_time_max = 30.
    
-            T60_freq_1 = ms.random_uniform(T60_freq_min+1000, T60_freq_max, size=self.Bs, dtype=self.dtype)     # high-freq
-            T60_freq_2 = ms.random_uniform(T60_freq_min, T60_freq_1-1000, size=self.Bs, dtype=self.dtype)       # low-freq
-            T60_time_1 = ms.random_uniform(T60_time_min, T60_time_max - 1., size=self.Bs, dtype=self.dtype)     # shorter T60 (high-freq)
-            T60_time_2 = ms.random_uniform(T60_time_1, T60_time_1+T60_diff_max, size=self.Bs, dtype=self.dtype) # longer T60  (low-freq)
+            T60_freq_1 = self.random_batch(T60_freq_min+1000, T60_freq_max)     # high-freq
+            T60_freq_2 = self.random_batch(T60_freq_min, T60_freq_1-1000)     # low-freq
+            T60_time_1 = self.random_batch(t60_min_1, t60_max_1)
+            T60_time_2 = (T60_time_1 + self.random_batch(0, t60_diff_max)).clamp(t60_min_2,t60_max_2)
+            assert T60_time_1.le(T60_time_2).all(), [T60_time_1, T60_time_2]
         elif sampling=='equidist':
             T60_freq_1 = 1000. * torch.ones(size=(self.Bs,), dtype=self.dtype)
             T60_freq_2 = 100.  * torch.ones(size=(self.Bs,), dtype=self.dtype)
@@ -371,7 +391,9 @@ class String(nn.Module):
 
 
 class Bow(nn.Module):
-    def __init__(self, sr, length, batch_size, precision, **bow_kwargs):
+    def __init__(self, sr, length, batch_size, precision,
+        randomize_each='batch',
+        **bow_kwargs):
         super().__init__()
         ''' x_b   Tensor(float) : bowing position profile with shape (batch_size, time,)
             v_b   Tensor(float) : bowing velocity profile with shape (batch_size, time,)
@@ -380,7 +402,6 @@ class Bow(nn.Module):
             phi_1 Tensor(float) : bow friction coeff      with shape (batch_size, )
             wid   Tensor(float) : bow width               with shape (batch_size, time,)
             pos   Tensor(float) : readout position        with shape (batch_size, )
-            T60   Tensor(float) : T60 against frequency   with shape (batch_size, 2, 2)
         '''
         assert precision in ['single', 'double']
         self.dtype = torch.float64 if precision == 'double' else torch.float32
@@ -388,6 +409,7 @@ class Bow(nn.Module):
         self.Nt = int(sr * length)   # duration of simulation (samples)
         self.sr = sr
         self.Bs = batch_size
+        self.randomize_each = randomize_each
 
         self.initialize_config(**bow_kwargs)
 
@@ -407,6 +429,15 @@ class Bow(nn.Module):
         self.initialize_friction(phi_0_max, phi_0_min, phi_1_max, phi_1_min)
         self.initialize_width(wid_min, wid_max)
 
+    def random_batch(self, min_val, max_val, size=None, weight=None):
+        size = (self.Bs,) if size is None else size
+        if self.randomize_each == 'batch':
+            out = ms.random_uniform(min_val, max_val, size=size, dtype=self.dtype, weight=weight)
+        else: # randomized for each iteration
+            out = ms.random_uniform(min_val, max_val, size=1, dtype=self.dtype, weight=weight)
+            if out.size() != size: out = out.repeat(size)
+        return out
+
     def dump_parameter(self, par, val):
         val = torch.from_numpy(val).to(self.dtype) if isinstance(val, np.ndarray) else val
         val = nn.Parameter(val, requires_grad=True)
@@ -415,21 +446,21 @@ class Bow(nn.Module):
                 self.state_dict()[name].copy_(val)
 
     def initialize_position(self, x_b_min=0.2, x_b_max=0.5, x_b_maxdiff=0.2):
-        x_1 = ms.random_uniform(x_b_min, x_b_max, size=self.Bs, dtype=self.dtype)
-        x_2 = (x_1 + ms.random_uniform(-x_b_maxdiff, x_b_maxdiff, size=self.Bs, dtype=self.dtype)).clamp(x_b_min, x_b_max)
+        x_1 = self.random_batch(x_b_min, x_b_max)
+        x_2 = (x_1 + self.random_batch(-x_b_maxdiff, x_b_maxdiff)).clamp(x_b_min, x_b_max)
         x_b = control.linear(x_1, x_2, self.Nt)
         self.register_buffer('x_b', nn.Parameter(x_b, requires_grad=False))
 
     def initialize_velocity(self, v_b_min=0.3, v_b_max=0.4):
-        v_1 = ms.random_uniform(v_b_min, v_b_max, size=self.Bs, dtype=self.dtype)
-        v_2 = ms.random_uniform(v_b_min, v_b_max, size=self.Bs, dtype=self.dtype)
+        v_1 = self.random_batch(v_b_min, v_b_max)
+        v_2 = self.random_batch(v_b_min, v_b_max)
         v_b = control.linear(v_1, v_2, self.Nt)
         v_b = ms.pre_shaper(v_b, self.sr)
         self.register_buffer('v_b', nn.Parameter(v_b, requires_grad=False))
 
     def initialize_force(self, F_b_min=80, F_b_max=100, F_b_maxdiff=10, do_pulloff=True):
-        F_1 = ms.random_uniform(F_b_min, F_b_max, size=self.Bs, dtype=self.dtype)
-        F_2 = F_1 + ms.random_uniform(-F_b_maxdiff, F_b_maxdiff, size=self.Bs, dtype=self.dtype).clamp(F_b_min, F_b_max)
+        F_1 = self.random_batch(F_b_min, F_b_max)
+        F_2 = F_1 + self.random_batch(-F_b_maxdiff, F_b_maxdiff).clamp(F_b_min, F_b_max)
         F_b = control.linear(F_1, F_2, self.Nt)
         if do_pulloff:
             for b in range(F_b.size(0)):
@@ -449,11 +480,13 @@ class Bow(nn.Module):
         # number of samples to be excited by the bow.
         # this is normalized into relative position in (0, 1]
         # at `src.model.cpp.string.cpp` and `src.model.cpp.misc.cpp`
-        wid = control.constant(ms.random_uniform(wid_min, wid_max, size=self.Bs, dtype=self.dtype), self.Nt, dtype=self.dtype)
+        wid = control.constant(self.random_batch(wid_min, wid_max), self.Nt, dtype=self.dtype)
         self.register_buffer('wid', nn.Parameter(wid, requires_grad=False))
 
 class Hammer(nn.Module):
-    def __init__(self, sr, length, batch_size, precision, k, **hammer_kwargs):
+    def __init__(self, sr, length, batch_size, precision, k,
+        randomize_each='batch',
+        **hammer_kwargs):
         super().__init__()
         ''' x_H   Tensor(float) : hammering position          with shape (batch_size,)
             v_H   Tensor(float) : hammer initial velocity     with shape (batch_size, time)
@@ -472,6 +505,7 @@ class Hammer(nn.Module):
         self.sr = sr
         self.k = k
         self.M_HD = -1e-3 # should match the value of `M_HD` at `src/model/cpp/hammer.cpp`
+        self.randomize_each = randomize_each
 
         self.initialize_config(**hammer_kwargs)
 
@@ -509,6 +543,15 @@ class Hammer(nn.Module):
         self.initialize_mass_ratio(M_r_min, M_r_max)
         self.initialize_stiffness(w_H_min, w_H_max, alpha_fixed)
 
+    def random_batch(self, min_val, max_val, size=None, weight=None):
+        size = (self.Bs,) if size is None else size
+        if self.randomize_each == 'batch':
+            out = ms.random_uniform(min_val, max_val, size=size, dtype=self.dtype, weight=weight)
+        else: # randomized for each iteration
+            out = ms.random_uniform(min_val, max_val, size=1, dtype=self.dtype, weight=weight)
+            if out.size() != size: out = out.repeat(size)
+        return out
+
     def dump_parameter(self, par, val):
         val = torch.from_numpy(val).to(self.dtype) if isinstance(val, np.ndarray) else val
         val = nn.Parameter(val, requires_grad=True)
@@ -521,12 +564,12 @@ class Hammer(nn.Module):
                     self.state_dict()[name].copy_(val)
 
     def initialize_position(self, x_H_min=0.1, x_H_max=0.9):
-        x_H = ms.random_uniform(x_H_min, x_H_max, size=self.Bs, dtype=self.dtype)
+        x_H = self.random_batch(x_H_min, x_H_max)
         self.register_buffer('x_H', nn.Parameter(x_H, requires_grad=False))
 
     def initialize_velocity(self, v_H_min=0.5, v_H_max=5, profile=None):
         # velocity in m/s : 0.5 (piano) ~ 5 (fortissimo)
-        v_H = ms.random_uniform(v_H_min, v_H_max, size=self.Bs, dtype=self.dtype)
+        v_H = self.random_batch(v_H_min, v_H_max)
         if profile is None:
             profile = torch.zeros((1,self.Nt), dtype=self.dtype); profile[:,1] = 1.
         v_H = v_H.unsqueeze(-1) * profile
@@ -540,14 +583,14 @@ class Hammer(nn.Module):
     def initialize_mass_ratio(self, M_r_min=0.75, M_r_max=1.25):
         w = None if self.v_H_max == self.v_H_min else \
             1. - (self.v_H.max(-1).values - self.v_H_min) / (self.v_H_max - self.v_H_min)
-        M_r = ms.random_uniform(M_r_min, M_r_max, size=self.Bs, weight=w, dtype=self.dtype)
+        M_r = self.random_batch(M_r_min, M_r_max, weight=w)
         self.register_buffer('M_r', nn.Parameter(M_r, requires_grad=False))
 
     def initialize_stiffness(self, w_H_min=1000,  w_H_max=3000, alpha_fixed=None):
         # hammer excitations are conservative only for alpha == 1 or 3
-        w_H   = ms.random_uniform(w_H_min,   w_H_max,   size=self.Bs, dtype=self.dtype)
+        w_H   = self.random_batch(w_H_min, w_H_max)
         if alpha_fixed is None: # 1 or 3
-            alpha = 2 * ms.random_uniform(0, 1, size=self.Bs, dtype=self.dtype).ge(0.5) + 1
+            alpha = 2 * self.random_batch(0, 1).ge(0.5) + 1
         else:
             alpha = alpha_fixed * torch.ones(size=(self.Bs,), dtype=self.dtype)
         self.register_buffer('alpha', nn.Parameter(alpha, requires_grad=False))

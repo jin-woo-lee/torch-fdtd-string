@@ -117,11 +117,25 @@ def main(config: OmegaConf):
         from src.task import process_training_data
         # preprocess simulation results as training data
         process_training_data.process(args)
+        #from src.task import process_alpha_data
+        #process_alpha_data.process(args)
 
     if args.proc.train:
         from src import trainer
         # train neural network
         trainer.train(args)
+
+    if args.proc.test:
+        from src import trainer
+        # test neural network
+        hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+        msg  = 'Do not pass args.task.ckpt_dir=...\n'
+        msg += 'Indicate the test directory as: hydra.run.dir=...'
+        assert args.task.ckpt_dir is None, msg
+        output_dir = hydra_cfg['runtime']['output_dir']
+        ckpt_dir = args.task._name_ + output_dir.split(args.task._name_)[-1]
+        args.task.ckpt_dir = ckpt_dir
+        trainer.eval(args)
 
 if __name__=='__main__':
     #os.environ["CUDA_VISIBLE_DEVICES"] = '-1'

@@ -42,6 +42,14 @@ torch::Tensor floor_dirac_delta(
     return torch::floor(xax).eq(idx).to(n.dtype());  // (batch_size, N, 1)
 }
 
+torch::Tensor domain_x(int N, torch::Tensor n) {
+    /*  N    (int): number of maximal samples in space
+     *  n    (B, 1, 1): number of actual samples in space
+     */
+    auto v = 2 / n;
+    v = (v * torch::ones_like(v).repeat({1,1,N})).cumsum(2) - v;
+    return (v.clamp(0,2).transpose(2,1) - 1)/2;
+}
 
 torch::Tensor triangular(
     int N,

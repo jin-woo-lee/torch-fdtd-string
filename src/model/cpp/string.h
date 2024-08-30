@@ -13,7 +13,7 @@ vector<torch::Tensor> string_step(
     torch::Tensor,
     torch::Tensor,
     vector<float>, int, int, float,
-    bool
+    bool, bool
 );
 
 #endif
