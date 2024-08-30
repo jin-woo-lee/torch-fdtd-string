@@ -12,6 +12,7 @@ randomize_name: false # randomize savenames
 # error configuration
 relative_order: 4 # order of the discretization error relative to the spatial grid size
 precision: single # single/double precision
+manufactured: false # simulate for the manufactured solution (used for verification purposes)
 
 # number of samples in time
 length: 1.  # length (in sec) to simulate
