@@ -46,6 +46,7 @@ def train(args):
     pl_conf = dict(
         gpus=gpus, accelerator="ddp",
         num_sanity_val_steps=num_sanity_val_steps,
+        logger=None,
         default_root_dir=f".",
         callbacks=pl_callbacks,
         profiler="simple",
@@ -91,6 +92,7 @@ def eval(args):
     pl_conf = dict(
         gpus=gpus, accelerator="ddp",
         default_root_dir=proj_dir,
+        logger=None,
         detect_anomaly=True if args.proc.debug else False,
         callbacks=pl_callbacks,
     )
