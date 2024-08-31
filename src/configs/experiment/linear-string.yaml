@@ -84,7 +84,6 @@ task:
     #- kappa_fixed : 0.01
     #===== 
     #------------------------------ 
-    - kappa_hammer: 0.
     - alpha_fixed : 1.
     - alpha_min   : 1.
     - alpha_max   : 1.

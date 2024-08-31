@@ -36,7 +36,6 @@ task:
     - kappa_min   : 0.03
     - kappa_max   : 0.03
     - kappa_fixed : 0.03
-    - kappa_hammer: 0.
     - alpha_fixed : 1.
     #===== 
   f0_inf: 60.0
