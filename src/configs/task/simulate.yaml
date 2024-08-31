@@ -44,7 +44,6 @@ string_condition:
   - kappa_min    : null
   - kappa_max    : null
   - kappa_fixed  : null
-  - kappa_hammer : null
   - alpha_min    : null
   - alpha_max    : null
   - alpha_fixed  : null
