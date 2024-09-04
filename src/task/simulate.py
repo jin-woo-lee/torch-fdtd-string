@@ -226,6 +226,8 @@ def run(args, save_dir, model_name, n_samples):
     if args.task.sampling_kappa == 'fix':
         kappa_max = [args.task.string_condition[num]['kappa_fixed'] for num in range(len(args.task.string_condition)) if 'kappa_fixed' in args.task.string_condition[num].keys()][0]
     else:
+        assert 'kappa_max' in [args.task.string_condition[num] for num in range(len(args.task.string_condition))], \
+        f"Specify 'kappa_max' for `args.task.string_condition`. Current arguments: {args.task.string_condition}"
         kappa_max = [args.task.string_condition[num]['kappa_max'] for num in range(len(args.task.string_condition)) if 'kappa_max' in args.task.string_condition[num].keys()][0]
     if args.task.sampling_f0 == 'fix':
         f0_min = [args.task.string_condition[num]['f0_fixed'] for num in range(len(args.task.string_condition)) if 'f0_fixed' in args.task.string_condition[num].keys()][0]
