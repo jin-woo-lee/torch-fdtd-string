@@ -18,7 +18,6 @@ task:
   length: 1.0
   chunk_length: 1.0
 
-  dont_save_silence: false
   write_during_process: false
   normalize_output: true
 
