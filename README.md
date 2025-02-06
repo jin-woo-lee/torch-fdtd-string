@@ -6,16 +6,25 @@ Simulated string with bowing excitation, exhibiting a Helmholtz motion.
 
 ----
 
-StringFDTD-Torch is a planar string simulation engine
+This repo contains two PyTorch-based string simulator, namely
+*StringFDTD-Torch* [[1]](#1) and *DMSP* [[2]](#2).
+
+- StringFDTD-Torch [![arXiv](https://img.shields.io/badge/arXiv-2311.18505-b31b1b.svg)](https://arxiv.org/abs/2311.18505)
+- DMSP [![OpenReview](https://img.shields.io/badge/OpenReview-fpxRpPbF1t-b31b1b.svg)](https://openreview.net/forum?id=fpxRpPbF1t) [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/szin94/dmsp)
+
+*StringFDTD-Torch* is a planar string simulation engine
 for musical instrument sound synthesis research.
 It simulates a string vibration from a given set
 of mechanical properties and excitation conditions
 based on a finite difference scheme
 (i.e., finite difference time domain)
 and outputs the resulting string sound.
-More details can be found in our papers
-[[1]](#1), [[2]](#2).
 
+*Differentiable Modal Synthesis for Physical Modeling (DMSP)*
+is a neural network trained to approximate the string motion
+simulated using StringFDTD-Torch but in an efficient manner
+augmenting the modal synthesis method in a similar manner to
+the DDSP approach.  
 
 ## Usage
 We encourage you to set `task.root_dir=` argument
@@ -113,16 +122,17 @@ ls /path/to/simulated/directory # 0-0  0-1  ...  codes  run.log
 python -m run experiment=evaluate task.load_dir='/path/to/simulated/directory/' 
 ```
 
+
 ## Citation
 
 If you use this simulator in your research, please cite the following paper.
 
 ```bib
-@article{lee2024dmsp,
-  title   = {Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation},
-  author  = {Lee, Jin Woo and Park, Jaehyun and Choi, Min Jun and Lee, Kyogu},
-  journal = {arXiv preprint arXiv:2407.05516},
-  year    = {2024}
+@inproceedings{leedifferentiable,
+  title     = {Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation},
+  author    = {Lee, Jin Woo and Park, Jaehyun and Choi, Min Jun and Lee, Kyogu},
+  booktitle = {The Thirty-eighth Annual Conference on Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
 }
 @inproceedings{lee2024string,
   title        = {String Sound Synthesize on GPU-accelerated Finite Difference Scheme},
@@ -143,7 +153,7 @@ In *ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Sign
 <a id="2">[2]</a> 
 Lee, J. W., Park, J., Choi, M. J., & Lee, K. (2024).
 Differentiable Modal Synthesis for Physical Modeling of Planar String Sound and Motion Simulation.
-*arXiv preprint* arXiv:2407.05516.
+In *The Thirty-eighth Annual Conference on Neural Information Processing Systems (NeurIPS)*.
 
 <a id="3">[3]</a> 
 Fletcher, H. (1964).
