@@ -10,21 +10,20 @@ This repo contains two PyTorch-based string simulator, namely
 *StringFDTD-Torch* [[1]](#1) and *DMSP* [[2]](#2).
 
 - StringFDTD-Torch [![arXiv](https://img.shields.io/badge/arXiv-2311.18505-b31b1b.svg)](https://arxiv.org/abs/2311.18505)
+   + *StringFDTD-Torch* is a planar string simulation engine
+     for musical instrument sound synthesis research.
+     It simulates a string vibration from a given set
+     of mechanical properties and excitation conditions
+     based on a finite difference scheme
+     (i.e., finite difference time domain)
+     and outputs the resulting string sound.
+
 - DMSP [![OpenReview](https://img.shields.io/badge/OpenReview-fpxRpPbF1t-b31b1b.svg)](https://openreview.net/forum?id=fpxRpPbF1t) [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/szin94/dmsp)
-
-*StringFDTD-Torch* is a planar string simulation engine
-for musical instrument sound synthesis research.
-It simulates a string vibration from a given set
-of mechanical properties and excitation conditions
-based on a finite difference scheme
-(i.e., finite difference time domain)
-and outputs the resulting string sound.
-
-*Differentiable Modal Synthesis for Physical Modeling (DMSP)*
-is a neural network trained to approximate the string motion
-simulated using StringFDTD-Torch but in an efficient manner
-augmenting the modal synthesis method in a similar manner to
-the DDSP approach.  
+   + *Differentiable Modal Synthesis for Physical Modeling (DMSP)*
+     is a neural network trained to approximate the string motion
+     simulated using StringFDTD-Torch but in an efficient manner
+     augmenting the modal synthesis method in a similar manner to
+     the DDSP approach.  
 
 ## Usage
 We encourage you to set `task.root_dir=` argument
