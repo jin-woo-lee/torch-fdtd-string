@@ -50,9 +50,7 @@ class Trainer(pl.LightningModule):
 
         self.plot_test_video = args.task.plot_test_video
 
-        ############################## 
         ''' model archcitecture setup '''
-        ############################## 
         network_arch = vars(args.model).copy()['_name_']
         self.network_arch = network_arch
         framework_conf = vars(args.framework).copy()
@@ -109,9 +107,7 @@ class Trainer(pl.LightningModule):
 
         print(self.model)
 
-        ############################## 
         ''' loss setup '''
-        ############################## 
         opt_conf = vars(args.optimizer).copy()
         sch_conf = vars(args.scheduler).copy()
         self.opt_type = opt_conf.pop('_name_')
@@ -139,16 +135,13 @@ class Trainer(pl.LightningModule):
         )
         self.loss_conf = {
             "l1"     : (loss.L1Loss(scale_invariance=True), ['preds', 'target']),
-            #"f0"     : (loss.F0Loss(scale=30., weight=10.), ['preds_f0', 'target_f0']),
             "f0"     : (loss.F0Loss(scale=1.0, weight=10.), ['preds_f0', 'target_f0']),
-            #"fk"     : (loss.FkLoss(scale=10., weight=1.0), ['preds_fk', 'target_fk']),
             "fk"     : (loss.FkLoss(scale=1.0, weight=1.0), ['preds_fk', 'target_fk']),
             "sisdr"  : (loss.SISDR(), ['preds', 'target']),
             "fft"    : (loss.FFTLoss(10), ['preds', 'target']),
             "magspec": (loss.MRSTFT(input_scale=10., **self.magspec_kwargs).cuda(), ['preds', 'target']),
             "melspec": (loss.MRSTFT(input_scale=10., **self.melspec_kwargs).cuda(), ['preds', 'target']),
             "modefreq": (loss.ModeFreqLoss(1.), ['preds_freq', 'target_fk']),
-            #"modeamps": (loss.ModeAmpsLoss(scale=150., weight=20), ['preds_coef', 'target_ck']),
             "modeamps": (loss.ModeAmpsLoss(scale=200., weight=20), ['preds_coef', 'target_ck']),
         }
         self.loss_criteria = args.task.loss_criteria
@@ -160,33 +153,16 @@ class Trainer(pl.LightningModule):
         self._init_torchmetrics("valid")
         self._init_torchmetrics("test")
 
-        ############################## 
         ''' task setup '''
-        ############################## 
         self.data_dir = args.task.load_dir
         self.load_name = args.task.load_name
-        # def get_data_list(split):
-        #     #++++++++++++++++++++++++++++++ 
-        #     wp = f"{self.data_dir}/{self.load_name}/{split}/*/ut-*.wav"
-        #     #wp = f"{self.data_dir}/{self.load_name}/*/ut-*.wav"
-        #     #++++++++++++++++++++++++++++++ 
-        #     total_data = [p for p in glob.glob(wp)]
-        #     return total_data
-        # train_data = get_data_list('train')
-        # valid_data = get_data_list('valid')
-        # test_data  = get_data_list('test')
-        # total_ndata = len(train_data + valid_data + test_data)
-        # assert total_ndata > 0, f"Check {self.data_dir}/{self.load_name}/*/*/*/ut-*.wav"
-        ############################## 
+
         ''' validation setup '''
-        ############################## 
         self.batch_size = args.task.batch_size
         self.valid_batch_size = args.task.valid_batch_size
         self.test_batch_size = args.task.test_batch_size
 
-        ############################## 
         ''' proc setup '''
-        ############################## 
         self.num_workers = args.proc.num_workers
 
     def train_dataloader(self):
@@ -224,17 +200,8 @@ class Trainer(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        #++++++++++++++++++++++++++++++ 
         optimizer = opt.get_optimizer(self.opt_type, self.parameters(), self.opt_conf)
         scheduler = opt.get_scheduler(self.sch_type, optimizer, self.sch_conf)
-        #++++++++++++++++++++++++++++++ 
-        #optimizer = [
-        #    opt.get_optimizer(self.opt_type, self.parameters(), self.opt_conf),
-        #    opt.get_optimizer(self.opt_type, self.parameters(), self.opt_conf),
-        #]
-        #print("*** scheduler not supported for multiple optimizers")
-        #scheduler = None
-        #++++++++++++++++++++++++++++++ 
 
         optimizer = optimizer if isinstance(optimizer, list) else [optimizer]
         if scheduler is None:
@@ -307,8 +274,6 @@ class Trainer(pl.LightningModule):
             else:
                 if not v.isnan():
                     out.update({f"{prefix}/{k}": v})
-                #else:
-                #    print(f"*** {prefix}/{k} is nan")
         return out
 
     def on_train_epoch_start(self):
@@ -322,18 +287,15 @@ class Trainer(pl.LightningModule):
         self._reset_torchmetrics("test")
 
     def training_step(self, batch, batch_idx, optimizer_idx=0):
-        #an = batch["analytic"].float() # (Bs, Nt)
         gt = batch["target"].float() # (Bs, Nt)
         xg = batch["x"].float().unsqueeze(1) # (Bs,  1)
         tg = batch["t"].float().squeeze(2)  # (Bs, Nt)
         ka = batch["kappa"].float().view(-1,1)
         al = batch["alpha"].float().view(-1,1)
         f_k = batch["mode_freq"].float()  # (Bs, n_modes)
-        #a_k = batch["mode_amps"].float()  # (Bs, n_modes, Nx)
         c_k = batch["mode_coef"].float()  # (Bs, 1,  1, n_modes)
         f_k = f_k.narrow(-1,0,self.n_modes).unsqueeze(1)
         c_k = c_k.narrow(-1,0,self.n_modes).squeeze(1)
-        #a_k = a_k.narrow(1,0,self.n_modes).transpose(1,2)
         f_0 = batch["f0"].float()  # (Bs, Nt)
         u_0 = batch["u0"].float()  # (Bs, 1, Nx)
         t60 = batch["T60"].float()  # (Bs, 2, 2)
@@ -378,11 +340,9 @@ class Trainer(pl.LightningModule):
         ka = batch["kappa"].float().view(-1,1)
         al = batch["alpha"].float().view(-1,1)
         f_k = batch["mode_freq"].float()  # (Bs, n_modes)
-        a_k = batch["mode_amps"].float()  # (Bs, n_modes, Nx)
         c_k = batch["mode_coef"].float()  # (Bs, 1,  1, n_modes)
         f_k = f_k.narrow(-1,0,self.n_modes).unsqueeze(1)
         c_k = c_k.narrow(-1,0,self.n_modes).squeeze(1)
-        #a_k = a_k.narrow(1,0,self.n_modes).transpose(1,2)
         f_0 = batch["f0"].float()  # (Bs, Nt)
         u_0 = batch["u0"].float()  # (Bs, 1, Nx)
         t60 = batch["T60"].float()  # (Bs, 2, 2)
@@ -409,11 +369,9 @@ class Trainer(pl.LightningModule):
 
         if dataloader_idx == 0:
             # conduct validation
-            #loss_dict = self.compute_loss("valid", batch)
             self.compute_eval("valid", batch)
         else:
             # conduct test
-            #loss_dict = self.compute_loss("test", batch)
             self.compute_eval("test", batch)
 
         an *= gain
@@ -433,11 +391,9 @@ class Trainer(pl.LightningModule):
         ka = batch["kappa"].float().view(-1,1)
         al = batch["alpha"].float().view(-1,1)
         f_k = batch["mode_freq"].float()  # (Bs, n_modes)
-        #a_k = batch["mode_amps"].float()  # (Bs, n_modes, Nx)
         c_k = batch["mode_coef"].float()  # (Bs, 1,  1, n_modes)
         f_k = f_k.narrow(-1,0,self.n_modes).unsqueeze(1)
         c_k = c_k.narrow(-1,0,self.n_modes).squeeze(1)
-        #a_k = a_k.narrow(1,0,self.n_modes).transpose(1,2)
         f_0 = batch["f0"].float()  # (Bs, Nt)
         u_0 = batch["u0"].float()  # (Bs, 1, Nx)
         t60 = batch["T60"].float()  # (Bs, 2, 2)
@@ -475,7 +431,6 @@ class Trainer(pl.LightningModule):
         batch.update(dict(preds_freq=in_freq))
         batch.update(dict(preds_coef=in_coef, target_ck=c_k))
 
-        #self.compute_loss("test", batch)
         self.compute_eval("test", batch)
 
         an *= gain
@@ -513,10 +468,7 @@ class Trainer(pl.LightningModule):
             #------------------------------  
             si_sdr=si_sdr.detach().cpu().numpy(), # (Bs, )
             sdr=sdr.detach().cpu().numpy(), # (Bs, )
-            #linmag=stft_dict["linmag"].detach().cpu().numpy(), # (Bs, )
-            #linmel=stft_dict["linmel"].detach().cpu().numpy(), # (Bs, )
             logmag=stft_dict["logmag"].detach().cpu().numpy(), # (Bs, )
-            #logmel=stft_dict["logmel"].detach().cpu().numpy(), # (Bs, )
             #------------------------------  
             f0_error=detune.detach().cpu().numpy(), # (Bs, )
             #------------------------------  
@@ -552,14 +504,6 @@ class Trainer(pl.LightningModule):
         # Log all validation torchmetrics
         super().test_epoch_end(outputs)
         results = self.process_results("test")
-        # self.log_dict(
-        #     results,
-        #     on_step=False,
-        #     on_epoch=True, 
-        #     prog_bar=True,
-        #     add_dataloader_idx=False,
-        #     sync_dist=True,
-        # )
 
 
 
