@@ -55,8 +55,8 @@ def main(config: OmegaConf):
     cf.print_config(config, resolve=True)
     args = get_object(config, ConfigArgument())
 
-    os.environ['MASTER_ADDR'] = "127.0.0.1"
-    os.environ['MASTER_PORT'] = f"{args.proc.port}"
+    # os.environ['MASTER_ADDR'] = "127.0.0.1"
+    # os.environ['MASTER_PORT'] = f"{args.proc.port}"
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1" if args.proc.cpu \
     else ','.join([str(gpu_num) for gpu_num in args.proc.gpus])

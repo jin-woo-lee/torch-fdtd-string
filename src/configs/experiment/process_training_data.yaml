@@ -11,16 +11,8 @@ proc:
 task: 
   data_split : 8
   split_n : 0
-  #------------------------------ 
-  #result_dir: 'pluck-dynamic'
-  #save_dir  : '1024-pluck-dynamic'
-  #------------------------------ 
-  #result_dir: 'testset-linear'
-  #save_dir  : 'testset-linear-processed'
-  #------------------------------ 
   result_dir: 'pluck-aug'
   save_dir  : '1024-pluck-aug'
-  #------------------------------ 
 
   sr: 48000
   Nx: 256 # upsampled spatial grid size

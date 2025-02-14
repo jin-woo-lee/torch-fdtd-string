@@ -1,4 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch==1.12.1+cu113
+torchaudio==0.12.1
+lightning
 hydra-core
 torchinfo
 wandb
 timm==0.4.12
+auraloss
+matplotlib
+librosa
+einops

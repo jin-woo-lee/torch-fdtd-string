@@ -67,6 +67,7 @@ It can be run as follows.
 ```bash
 python -m run experiment=nsynth-like task.result_dir=my_simulation
 ```
+The results will be saved under `{{ task.root_dir }}/my_simulation`.
 
 #### Running with a specified conditions
 In order to provide specific conditions
@@ -120,6 +121,25 @@ Please specify the path to the directory that contains the simulation results.
 ls /path/to/simulated/directory # 0-0  0-1  ...  codes  run.log
 python -m run experiment=evaluate task.load_dir='/path/to/simulated/directory/' 
 ```
+Note that for the `evaluate` subroutine, the `task.load_dir=...` should be followed by the full
+path to the directory to evaluate, e.g., `task.load_dir={{ task.root_dir }}/{{ task.result_dir }}`.
+
+
+## DMSP
+The DMSP model [[2]](#2) can be trained using the data simulated as above.
+First preprocess the simulated FDTD data following the `configs/experiment/process_training_data.yaml`.
+This incorporates spatially upsampling the FDTD results and saving the modal solutions.
+```bash
+python -m run experiment=process_training_data \
+    task.result_dir=my_simulation \
+    task.save_dir=my_training_data
+```
+The processed data will be saved under `{{ task.root_dir }}/my_training_data`.
+Now train the DMSP model using the preset saved under `configs/experiment/synth-dmsp.yaml`.
+```bash
+python -m run proc.gpus=[0] experiment=synth-dmsp task.load_name=my_training_data
+```
+The results will be saved under `{{ task.root_dir }}/{{ task.result_dir }}`.
 
 
 ## Citation
