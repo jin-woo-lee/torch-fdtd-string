@@ -38,7 +38,7 @@ Everything you simulate will be saved under `/path/to/save/results/{{ task.resul
 ### Dependencies
 Install python and system dependencies 
 ```bash
-xargs apt-get install < requirements.sys
+xargs apt-get install -y < apt-packages.txt
 pip install -r requirements.txt
 ```
 
