@@ -28,7 +28,7 @@ This repo contains two PyTorch-based string simulators,
 ## TL;DR
 Here is a minimal step-by-step guide to run the DMSP code:
 <details>
-  <summary>**Install the dependencies** (section 1.1)</summary>
+  <summary><b>Install the dependencies</b> (section 1.1)</summary>
 
   ```bash
   xargs apt-get install -y < apt-packages.txt
@@ -36,7 +36,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   ```
 </details>
 <details>
-  <summary>**Synthesize FDTD data** (section 1.2)</summary>
+  <summary><b>Synthesize FDTD data</b> (section 1.2)</summary>
 
   Synthesize 100 different FDTD data with the default configuration.
   ```bash
@@ -45,7 +45,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   The results are saved under `./results/my_fdtd_simulation`.
 </details>
 <details>
-  <summary>**Preprocess the data** (section 2.1)</summary>
+  <summary><b>Preprocess the data</b> (section 2.1)</summary>
 
   Preprocess the synthesized FDTD data and save them under `my_dmsp_data`.
   Use 60/20/20 split for train/valid/test data.
@@ -64,7 +64,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   The results are saved under `./results/my_dmsp_data`.
 </details>
 <details>
-  <summary>**Train DMSP model** (section 2.2)</summary>
+  <summary><b>Train DMSP model</b> (section 2.2)</summary>
 
   ```bash
   python -m run proc.gpus=[0] experiment=synth-dmsp task.load_name=my_dmsp_data task.run=my_dmsp_model
@@ -73,7 +73,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   You can also find the pretrained DMSP model from [Hugging Face](https://huggingface.co/spaces/szin94/dmsp/tree/main/ckpt).
 </details>
 <details>
-  <summary>**Run the inference** (section 2.3)</summary>
+  <summary><b>Run the inference</b> (section 2.3)</summary>
 
   ```bash
   python -m run proc.gpus=[0] experiment=synth-dmsp 
@@ -211,6 +211,7 @@ python -m run experiment=evaluate task.load_dir='./my_fdtd_simulation'
 
 ## 2. DMSP
 The DMSP model [[2]](#2) can be trained using the data simulated as above.
+The pretrained model can be downloaded from [Hugging Face](https://huggingface.co/spaces/szin94/dmsp/tree/main/ckpt).
 
 ### 2.1. Preprocess the FDTD data
 In order to train the DMSP model, first preprocess the simulated FDTD data
