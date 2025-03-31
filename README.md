@@ -25,6 +25,67 @@ This repo contains two PyTorch-based string simulators,
      augmenting the modal synthesis method in a similar manner to
      the DDSP approach.  
 
+## TL;DR
+Here is a minimal step-by-step guide to run the DMSP code:
+<details>
+  <summary>Install the dependencies (section 1.1)</summary>
+
+  ```bash
+  xargs apt-get install -y < apt-packages.txt
+  pip install -r requirements.txt
+  ```
+</details>
+<details>
+  <summary>Synthesize FDTD data (section 1.2)</summary>
+
+  Synthesize 100 different FDTD data with the default configuration.
+  ```bash
+  python -m run experiment=nsynth-like task.num_samples=100 task.result_dir=my_fdtd_simulation
+  ```
+  The results are saved under `./results/my_fdtd_simulation`.
+</details>
+<details>
+  <summary>Preprocess the training data (section 2.1.1)</summary>
+
+  Preprocess the synthesized FDTD data and save them under `my_dmsp_data`.
+  Use 60/20/20 split for train/valid/test data.
+  ```bash
+  nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+      task.save_dir=my_dmsp_data/test  task.data_split=5 task.split_n=0 > log_test &
+  nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+      task.save_dir=my_dmsp_data/valid task.data_split=5 task.split_n=1 > log_valid &
+  nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+      task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=2 > log_train1 &
+  nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+      task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=3 > log_train2 &
+  nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+      task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=4 > log_train3 &
+  ```
+  The results are saved under `./results/my_dmsp_data`.
+</details>
+<details>
+  <summary>Train DMSP model (section 2.2)</summary>
+
+  ```bash
+  python -m run proc.gpus=[0] experiment=synth-dmsp task.load_name=my_dmsp_data task.run=my_dmsp_model
+  ```
+  The results are saved under `./results/synthesize-supervised-dmsp-my_dmsp_model-YYYYMMDD-HHMMSS-000000`.
+</details>
+<details>
+  <summary>Run the DMSP inference (section 2.3)</summary>
+
+  ```bash
+  python -m run proc.gpus=[0] experiment=synth-dmsp 
+  task.load_name=my_dmsp_data \
+  hydra.run.dir=/workspace/torch-fdtd-string/results/synthesize-supervised-dmsp-my_dmsp_model-YYYYMMDD-HHMMSS-000000 \
+  proc.train=false proc.test=true \
+  task.plot_test_video=true \
+  task.save_test_score=true
+  ```
+  The results are saved under `./results/synthesize-supervised-dmsp-my_dmsp_model-YYYYMMDD-HHMMSS-000000/test/my_dmsp_data`.
+</details>
+
+
 ## 1. StringFDTD-Torch
 StringFDTD-Torch can simulate under your own
 predefined configurations or can also be used
@@ -155,7 +216,7 @@ In order to train the DMSP model, first preprocess the simulated FDTD data
 following the `configs/experiment/process_training_data.yaml`.
 This incorporates spatially upsampling the FDTD results and saving the modal solutions.
 <details>
-  <summary>Processing the whole FDTD data</summary>
+  <summary>2.1.1. Processing the whole FDTD data</summary>
 
   ```bash
   python -m run experiment=process_training_data \
@@ -177,7 +238,7 @@ This incorporates spatially upsampling the FDTD results and saving the modal sol
   ```
 </details>
 <details>
-  <summary>Processing with train/validation/test split</summary>
+  <summary>2.1.2. Processing with train/validation/test split</summary>
 
   The `process_training_data.yaml` config file also supports splitting the data into
   training, validation, and test sets. You can specify the split ratio using the `task.data_split` and the `task.split_n` arguments.
@@ -220,7 +281,6 @@ See `src/configs/experiment/process_training_data.yaml` for more details.
 Now train the DMSP model using the preset saved under `configs/experiment/synth-dmsp.yaml`.
 ```bash
 python -m run proc.gpus=[0] experiment=synth-dmsp \
-    task.load_dir=./results \
     task.load_name=my_dmsp_data
 ```
 For more details, see `src/configs/experiment/synth-dmsp.yaml`.
@@ -248,7 +308,7 @@ To run inference using the trained DMSP model,
 you can use the same `synth-dmsp` config file as a base.
 ```bash
 python -m run proc.gpus=[0] experiment=synth-dmsp \
-    task.load_dir=./results task.load_name=my_dmsp_data \
+    task.load_name=my_dmsp_data \
     hydra.run.dir=/full/path/to/your/trained/{{ task.result_dir }} \
     proc.train=false proc.test=true \
     task.plot_test_video=true \
