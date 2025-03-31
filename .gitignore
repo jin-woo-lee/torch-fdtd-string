@@ -54,12 +54,5 @@ src/dataset/analyze.py
 
 cmd
 
-.*.swp
-.*.py.swp
-*/.*.py.swp
-*/*/.*.py.swp
-.*.cpp.swp
-*/.*.cpp.swp
-*/*/.*.cpp.swp
-
+*.swp
 
