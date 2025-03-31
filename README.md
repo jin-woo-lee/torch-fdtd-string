@@ -28,7 +28,7 @@ This repo contains two PyTorch-based string simulators,
 ## TL;DR
 Here is a minimal step-by-step guide to run the DMSP code:
 <details>
-  <summary>Install the dependencies (section 1.1)</summary>
+  <summary>**Install the dependencies** (section 1.1)</summary>
 
   ```bash
   xargs apt-get install -y < apt-packages.txt
@@ -36,7 +36,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   ```
 </details>
 <details>
-  <summary>Synthesize FDTD data (section 1.2)</summary>
+  <summary>**Synthesize FDTD data** (section 1.2)</summary>
 
   Synthesize 100 different FDTD data with the default configuration.
   ```bash
@@ -45,7 +45,7 @@ Here is a minimal step-by-step guide to run the DMSP code:
   The results are saved under `./results/my_fdtd_simulation`.
 </details>
 <details>
-  <summary>Preprocess the training data (section 2.1.1)</summary>
+  <summary>**Preprocess the data** (section 2.1)</summary>
 
   Preprocess the synthesized FDTD data and save them under `my_dmsp_data`.
   Use 60/20/20 split for train/valid/test data.
@@ -64,15 +64,16 @@ Here is a minimal step-by-step guide to run the DMSP code:
   The results are saved under `./results/my_dmsp_data`.
 </details>
 <details>
-  <summary>Train DMSP model (section 2.2)</summary>
+  <summary>**Train DMSP model** (section 2.2)</summary>
 
   ```bash
   python -m run proc.gpus=[0] experiment=synth-dmsp task.load_name=my_dmsp_data task.run=my_dmsp_model
   ```
   The results are saved under `./results/synthesize-supervised-dmsp-my_dmsp_model-YYYYMMDD-HHMMSS-000000`.
+  You can also find the pretrained DMSP model from [Hugging Face](https://huggingface.co/spaces/szin94/dmsp/tree/main/ckpt).
 </details>
 <details>
-  <summary>Run the DMSP inference (section 2.3)</summary>
+  <summary>**Run the inference** (section 2.3)</summary>
 
   ```bash
   python -m run proc.gpus=[0] experiment=synth-dmsp 
