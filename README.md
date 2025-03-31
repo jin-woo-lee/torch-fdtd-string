@@ -154,60 +154,64 @@ The DMSP model [[2]](#2) can be trained using the data simulated as above.
 In order to train the DMSP model, first preprocess the simulated FDTD data
 following the `configs/experiment/process_training_data.yaml`.
 This incorporates spatially upsampling the FDTD results and saving the modal solutions.
-<details> <summary>Processing the whole FDTD data</summary>
-```bash
-python -m run experiment=process_training_data \
-    task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data
-```
-The processed data will be saved under `{{ task.root_dir }}/my_dmsp_data`.
-The saved files will be organized as follows:
-```bash
-my_dmsp_data/
-├── {batch_id}-{batch_number}/ # same as the simulation results
-│   ├── parameters.npz         # parameters for the simulation
-│   ├── ua-{000}.wav           # 1D modal solution of the string at x={000}
-│   ├── ...
-│   ├── ut-{000}.wav           # Lateral FDTD solution of the string at x={000}
-│   ├── ...
-│   └── vt.wav                 # Velocity of the lateral solution summed up over x.
-└── ...
-```
+<details>
+    <summary>Processing the whole FDTD data</summary>
+
+    ```bash
+    python -m run experiment=process_training_data \
+        task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data
+    ```
+    The processed data will be saved under `{{ task.root_dir }}/my_dmsp_data`.
+    The saved files will be organized as follows:
+    ```bash
+    my_dmsp_data/
+    ├── {batch_id}-{batch_number}/ # same as the simulation results
+    │   ├── parameters.npz         # parameters for the simulation
+    │   ├── ua-{000}.wav           # 1D modal solution of the string at x={000}
+    │   ├── ...
+    │   ├── ut-{000}.wav           # Lateral FDTD solution of the string at x={000}
+    │   ├── ...
+    │   └── vt.wav                 # Velocity of the lateral solution summed up over x.
+    └── ...
+    ```
 </details>
-<details> <summary>Processing with train/validation/test split</summary>
-The `process_training_data.yaml` config file also supports splitting the data into
-training, validation, and test sets. You can specify the split ratio using the `task.data_split` and the `task.split_n` arguments.
-- `data_split`: splits the list of whole data into `data_split` parts (set 0 to disable)
-- `split_n`: only processes the `split_n`-th part of the splitted data sublist
-For example, if you want to split the data into 5 parts and process the first part as test data,
-the second part as validation data, and the remaining three parts as training data, you can run the following commands:
-```bash
-nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data/test  task.data_split=5 task.split_n=0 > log_test &
-nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data/valid task.data_split=5 task.split_n=1 > log_valid &
-nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=2 > log_train1 &
-nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=3 > log_train2 &
-nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
-    task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=4 > log_train3 &
-```
-The processed data will be saved under `{{ task.root_dir }}/my_dmsp_data/{{ split }}`
-where `{{ split }}` is the name of the split (e.g., `train`, `valid`, `test`).
-You can run the above command in parallel to speed up the processing, but make sure to
-secure enough memory for each process. The saved files will be organized as follows:
-```bash
-my_dmsp_data/{{ split }}/
-├── {batch_id}-{batch_number}/ # same as the simulation results
-│   ├── parameters.npz         # parameters for the simulation
-│   ├── ua-{000}.wav           # 1D modal solution of the string at x={000}
-│   ├── ...
-│   ├── ut-{000}.wav           # Lateral FDTD solution of the string at x={000}
-│   ├── ...
-│   └── vt.wav                 # Velocity of the lateral solution summed up over x.
-└── ...
-```
+<details>
+    <summary>Processing with train/validation/test split</summary>
+
+    The `process_training_data.yaml` config file also supports splitting the data into
+    training, validation, and test sets. You can specify the split ratio using the `task.data_split` and the `task.split_n` arguments.
+    - `data_split`: splits the list of whole data into `data_split` parts (set 0 to disable)
+    - `split_n`: only processes the `split_n`-th part of the splitted data sublist
+    For example, if you want to split the data into 5 parts and process the first part as test data,
+    the second part as validation data, and the remaining three parts as training data, you can run the following commands:
+    ```bash
+    nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data/test  task.data_split=5 task.split_n=0 > log_test &
+    nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data/valid task.data_split=5 task.split_n=1 > log_valid &
+    nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=2 > log_train1 &
+    nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=3 > log_train2 &
+    nohup python -m run proc.gpus=[0] experiment=process_training_data task.result_dir=my_fdtd_simulation \
+        task.save_dir=my_dmsp_data/train task.data_split=5 task.split_n=4 > log_train3 &
+    ```
+    The processed data will be saved under `{{ task.root_dir }}/my_dmsp_data/{{ split }}`
+    where `{{ split }}` is the name of the split (e.g., `train`, `valid`, `test`).
+    You can run the above command in parallel to speed up the processing, but make sure to
+    secure enough memory for each process. The saved files will be organized as follows:
+    ```bash
+    my_dmsp_data/{{ split }}/
+    ├── {batch_id}-{batch_number}/ # same as the simulation results
+    │   ├── parameters.npz         # parameters for the simulation
+    │   ├── ua-{000}.wav           # 1D modal solution of the string at x={000}
+    │   ├── ...
+    │   ├── ut-{000}.wav           # Lateral FDTD solution of the string at x={000}
+    │   ├── ...
+    │   └── vt.wav                 # Velocity of the lateral solution summed up over x.
+    └── ...
+    ```
 </details>
 See `src/configs/experiment/process_training_data.yaml` for more details.
 
