@@ -13,8 +13,8 @@ from src.utils.audio import rms_normalize
 import wandb
 import soundfile as sf
 
-plt.rc('text', usetex=True)
-plt.rc('font', family='serif')
+#plt.rc('text', usetex=True) # install latex to use this
+#plt.rc('font', family='serif')
 
 def gt_param(TF=5, sr=44100):
     sr = 44100

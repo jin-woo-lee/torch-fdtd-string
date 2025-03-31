@@ -5,7 +5,7 @@ defaults:
   - callbacks: base # Extra pytorch-lightning features
 
 task:
-  root_dir: '/data2/private/szin/dfdm'
+  root_dir: './results'
   result_dir: ${task._name_}-${framework._name_}-${model._name_}-${task.run}-${now:%Y%m%d-%H%M%S-%f}
   save_name: null
   measure_time: false

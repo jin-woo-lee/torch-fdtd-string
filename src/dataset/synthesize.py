@@ -42,17 +42,18 @@ class GenericDataset(torch.utils.data.Dataset):
         self.keys += ['gain']
         self.keys += ['ua_f0',]
         self.keys += ['ut_f0',]
+        data_expr = lambda split: f"{data_dir}/{load_name}/{split}/*/ut-0.wav"
         # set `load_name` to be the directory containing
         # data preprocessed by `src/task/process_training_data.py`
         def get_string_id(path): return path.split('/')[-2]
         def get_space_idx(path): return int(os.path.splitext(os.path.basename(path))[0].split('-')[-1])
-        def get_data_list(split, alpha='*'):
+        def get_data_list(split):
             wp = f"{data_dir}/{load_name}/{split}/*/ut-0.wav"
-            total_data = [p for p in glob.glob(wp)]
+            total_data = [p for p in glob.glob(data_expr(split))]
             return sorted(total_data, key=lambda i: \
                 (get_string_id(i), get_space_idx(i)))
-        dl = get_data_list(split.lower(), self.alpha)
-        assert len(dl) > 0, dl
+        dl = get_data_list(split.lower())
+        assert len(dl) > 0, f"[Loader] No data found in the directory {data_expr(split.lower())}."
         self.Nx = Nx
         self.tgt_list = dl
 

@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from auraloss.freq import MultiResolutionSTFTLoss
 from einops import rearrange
-from src.utils import pde as pde
 from src.utils import misc as ms
 from src.utils import audio as audio
 
@@ -54,12 +53,6 @@ def stft_loss(x, y, n_fft=1024, n_mel=128, sr=48000, eps=1e-5):
 
 def mse_loss(preds, target):
     return F.mse_loss(preds, target)
-
-def planar_string(u, z, x, t, f0, kappa, alpha, sig0, sig1, masks, bow_params, hammer_params):
-    ''' gamma = 2 * f0 '''
-    loss_u, loss_z, u_result, z_result = pde.planar_string(
-        u, z, x, t, 2*f0, kappa, alpha, sig0, sig1, masks, bow_params, hammer_params)
-    return loss_u + loss_z, [u_result, z_result]
 
 def dirichlet_bc(u, dim=-1):
     ''' u: (batch_size, time, space) '''

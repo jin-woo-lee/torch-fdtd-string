@@ -25,7 +25,6 @@ from src.utils import loss as loss
 from src.utils import audio as audio
 from src.utils import optimizer as opt
 from src.utils import objective as obj
-from src.utils import diffusion as diffusion
 
 from src.dataset import synthesize as dataset
 from src.model import analytic as analytic
@@ -105,7 +104,7 @@ class Trainer(pl.LightningModule):
                 #------------------------------ 
             )
 
-        print(self.model)
+        # print(self.model)
 
         ''' loss setup '''
         opt_conf = vars(args.optimizer).copy()
@@ -286,7 +285,7 @@ class Trainer(pl.LightningModule):
     def on_test_epoch_start(self):
         self._reset_torchmetrics("test")
 
-    def training_step(self, batch, batch_idx, optimizer_idx=0):
+    def training_step(self, batch, batch_idx):
         gt = batch["target"].float() # (Bs, Nt)
         xg = batch["x"].float().unsqueeze(1) # (Bs,  1)
         tg = batch["t"].float().squeeze(2)  # (Bs, Nt)
@@ -380,6 +379,7 @@ class Trainer(pl.LightningModule):
 
         N = min(ut.size(0), 2)
         n = np.random.randint(ut.size(0)-N) if ut.size(0) > N else 0
+
         return an[n:n+N].detach().cpu(), gt[n:n+N].detach().cpu(), ut[n:n+N].detach().cpu()
 
     @torch.no_grad()
@@ -474,38 +474,4 @@ class Trainer(pl.LightningModule):
             #------------------------------  
         )
         return results
-
-    def training_epoch_end(self, outputs):
-        # Log training torchmetrics
-        super().training_epoch_end(outputs)
-        self.log_dict(
-            self.process_results("train"),
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            add_dataloader_idx=False,
-            sync_dist=True,
-        )
-
-    def validation_epoch_end(self, outputs):
-        # Log all validation torchmetrics
-        super().validation_epoch_end(outputs)
-        for name in ["valid", "test"]:
-            self.log_dict(
-                self.process_results(name),
-                on_step=False,
-                on_epoch=True, 
-                prog_bar=True,
-                add_dataloader_idx=False,
-                sync_dist=True,
-            )
-
-    def test_epoch_end(self, outputs):
-        # Log all validation torchmetrics
-        super().test_epoch_end(outputs)
-        results = self.process_results("test")
-
-
-
-
 

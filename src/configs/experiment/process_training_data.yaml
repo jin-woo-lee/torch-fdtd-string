@@ -9,10 +9,10 @@ proc:
   process_training_data: true
 
 task: 
-  data_split : 8
-  split_n : 0
-  result_dir: 'pluck-aug'
-  save_dir  : '1024-pluck-aug'
+  data_split : 0 # splits the list of whole data into `data_split` parts (set 0 to disable)
+  split_n : 0 # only processes the `split_n`-th part of the splitted data sublist
+  result_dir: 'my_fdtd_results'
+  save_dir  : 'my_dmsp_data'
 
   sr: 48000
   Nx: 256 # upsampled spatial grid size

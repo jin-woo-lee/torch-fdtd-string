@@ -33,8 +33,10 @@ def backup_code(args):
     exclude_file = ['cfg', 'cmd', '.gitignore']
     exclude_ext  = ['.png', '.jpg', '.pt', '.npz']
     filepath = []
+    cwd_name = os.path.dirname(args.cwd)
     for dirpath, dirnames, filenames in os.walk(args.cwd, topdown=True):
-        if not any(dir in dirpath for dir in exclude_dir):
+        subdirs = dirpath.split(cwd_name)[-1]
+        if not any(dir in subdirs for dir in exclude_dir):
             filtered_files=[name for name in filenames if (os.path.splitext(name)[-1] not in exclude_ext) and (name not in exclude_file)]
             filepath.append({'dir': dirpath, 'files': filtered_files})
 
@@ -81,6 +83,14 @@ def main(config: OmegaConf):
         save_dir_name = 'debug'
     else:
         save_dir_name = args.task.result_dir
+
+    if not os.path.isabs(args.task.root_dir):
+        # If the root_dir is relative, make it absolute.
+        args.task.root_dir = os.path.join(args.cwd, args.task.root_dir)
+    if not os.path.isabs(args.task.load_dir):
+        # If the root_dir is relative, make it absolute.
+        args.task.load_dir = os.path.join(args.cwd, args.task.load_dir)
+
     save_dir = f'{args.task.root_dir}/{save_dir_name}'
 
     if args.task.measure_time:
@@ -133,7 +143,10 @@ def main(config: OmegaConf):
         msg += 'Indicate the test directory as: hydra.run.dir=...'
         assert args.task.ckpt_dir is None, msg
         output_dir = hydra_cfg['runtime']['output_dir']
-        ckpt_dir = args.task._name_ + output_dir.split(args.task._name_)[-1]
+        if args.task._name_ in output_dir:
+            ckpt_dir = args.task._name_ + output_dir.split(args.task._name_)[-1]
+        else:
+            ckpt_dir = output_dir
         args.task.ckpt_dir = ckpt_dir
         trainer.eval(args)
 

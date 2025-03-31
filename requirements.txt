@@ -1,7 +1,9 @@
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.12.1+cu113
 torchaudio==0.12.1
-lightning
+tensorflow==2.15.0
+numpy==1.25.2
+lightning==2.1
 hydra-core
 torchinfo
 wandb
@@ -10,3 +12,5 @@ auraloss
 matplotlib
 librosa
 einops
+rich
+crepe

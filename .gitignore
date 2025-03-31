@@ -3,6 +3,7 @@ __pycache__/
 */*/__pycache__/
 */*/*/__pycache__/
 */*/*/*/__pycache__/
+results/
 check/
 log/
 vnv/
@@ -35,7 +36,6 @@ src/configs/framework/diffusion.yaml
 src/configs/task/analyze.yaml
 
 src/model/cpp/build
-src/model/analytic.py
 src/model/nn/analyzer.py
 src/model/nn/convnext*.py
 src/model/nn/gru.py

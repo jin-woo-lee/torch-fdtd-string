@@ -101,10 +101,13 @@ class SaveTestResults(Callback):
     def __init__(self, args):
         self.debug = args.proc.debug
         self.load_name = args.task.load_name
-
-        self.video_dirs = f"{args.task.root_dir}/{args.task.ckpt_dir}/test/{self.load_name}/video"
-        self.state_dirs = f"{args.task.root_dir}/{args.task.ckpt_dir}/test/{self.load_name}/state"
-        self.score_dirs = f"{args.task.root_dir}/{args.task.ckpt_dir}/test/{self.load_name}/score"
+        if not os.path.isabs(args.task.ckpt_dir):
+            ckpt_dir = f"{args.task.root_dir}/{args.task.ckpt_dir}"
+        else:
+            ckpt_dir = args.task.ckpt_dir
+        self.video_dirs = f"{ckpt_dir}/test/{self.load_name}/video"
+        self.state_dirs = f"{ckpt_dir}/test/{self.load_name}/state"
+        self.score_dirs = f"{ckpt_dir}/test/{self.load_name}/score"
         os.makedirs(self.video_dirs, exist_ok=True)
         os.makedirs(self.state_dirs, exist_ok=True)
         if os.path.exists(self.score_dirs):
@@ -127,7 +130,7 @@ class SaveTestResults(Callback):
                     line = [f"{epoch}-{it}-{b}"] + [f"{scores[i][key][b]:.8f}" for key in keys]
                     f.write('\t'.join(line) + '\n')
 
-    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         data, scores = outputs
         self.write_eval_scores(scores, trainer.current_epoch, batch_idx)
 
@@ -136,8 +139,12 @@ class PlotStateVideo(Callback):
     def __init__(self, args):
         self.debug = args.proc.debug
         self.load_name = args.task.load_name
-        self.video_dirs = f"{args.task.root_dir}/{args.task.ckpt_dir}/test/{self.load_name}/video"
-        self.state_dirs = f"{args.task.root_dir}/{args.task.ckpt_dir}/test/{self.load_name}/state"
+        if not os.path.isabs(args.task.ckpt_dir):
+            ckpt_dir = f"{args.task.root_dir}/{args.task.ckpt_dir}"
+        else:
+            ckpt_dir = args.task.ckpt_dir
+        self.video_dirs = f"{ckpt_dir}/test/{self.load_name}/video"
+        self.state_dirs = f"{ckpt_dir}/test/{self.load_name}/state"
         os.makedirs(self.video_dirs, exist_ok=True)
         os.makedirs(self.state_dirs, exist_ok=True)
 
@@ -167,7 +174,7 @@ class PlotStateVideo(Callback):
         plot.state_video(self.video_dirs, inp, self.sr, prefix=k, trim_front=True, fname='analytic')
         plot.state_video(self.video_dirs, tar, self.sr, prefix=k, trim_front=True, fname='fdtd')
    
-    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         data, scores = outputs
         self.summary(data, trainer.current_epoch, batch_idx)
 

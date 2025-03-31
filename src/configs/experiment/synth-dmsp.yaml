@@ -26,7 +26,8 @@ proc:
   train: true
 
 task: 
-  load_name: '1024-pluck-*'
+  load_dir : './results'
+  load_name: 'my_dmsp_data'
 
   valid_batch_size : 256
   test_batch_size  : 256

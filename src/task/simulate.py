@@ -222,17 +222,16 @@ def run(args, save_dir, model_name, n_samples):
         n_samples  : number of data to simulate
     '''
     sr = args.task.sr
-    #theta_t = 0.5 + 2/(np.pi**2) if args.task.theta_t is None else args.task.theta_t
     if args.task.sampling_kappa == 'fix':
-        kappa_max = [args.task.string_condition[num]['kappa_fixed'] for num in range(len(args.task.string_condition)) if 'kappa_fixed' in args.task.string_condition[num].keys()][0]
+        kappa_max = [args.task.string_condition[num]['kappa_fixed'] for num in range(len(args.task.string_condition)) if 'kappa_fixed' in list(args.task.string_condition[num].keys())][0]
     else:
-        assert 'kappa_max' in [args.task.string_condition[num] for num in range(len(args.task.string_condition))], \
+        assert 'kappa_max' in [list(args.task.string_condition[num].keys())[0] for num in range(len(args.task.string_condition))], \
         f"Specify 'kappa_max' for `args.task.string_condition`. Current arguments: {args.task.string_condition}"
-        kappa_max = [args.task.string_condition[num]['kappa_max'] for num in range(len(args.task.string_condition)) if 'kappa_max' in args.task.string_condition[num].keys()][0]
+        kappa_max = [args.task.string_condition[num]['kappa_max'] for num in range(len(args.task.string_condition)) if 'kappa_max' in list(args.task.string_condition[num].keys())][0]
     if args.task.sampling_f0 == 'fix':
-        f0_min = [args.task.string_condition[num]['f0_fixed'] for num in range(len(args.task.string_condition)) if 'f0_fixed' in args.task.string_condition[num].keys()][0]
+        f0_min = [args.task.string_condition[num]['f0_fixed'] for num in range(len(args.task.string_condition)) if 'f0_fixed' in list(args.task.string_condition[num].keys())][0]
     else:
-        f0_min = [args.task.string_condition[num]['f0_min'] for num in range(len(args.task.string_condition)) if 'f0_min' in args.task.string_condition[num].keys()][0]
+        f0_min = [args.task.string_condition[num]['f0_min'] for num in range(len(args.task.string_condition)) if 'f0_min' in list(args.task.string_condition[num].keys())][0]
     theta_t = fdm.get_theta(kappa_max, f0_min, sr) if args.task.theta_t is None else args.task.theta_t
 
     string_kwargs = dict(

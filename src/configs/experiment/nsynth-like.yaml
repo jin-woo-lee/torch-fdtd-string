@@ -31,8 +31,6 @@ task:
   string_condition:
     - f0_min: 98.00 # G2
     - f0_max: 440.0 # A4
-    #- f0_diff_max : 30
-    #- f0_mod_max  : 0.02
     - f0_diff_max : 30
     - f0_mod_max  : 0.08
     - kappa_min   : 0.01

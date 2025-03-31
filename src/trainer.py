@@ -7,13 +7,16 @@ import sys
 import glob
 
 import pytorch_lightning as pl
-from pytorch_lightning.utilities.seed import seed_everything
+from lightning.pytorch import seed_everything
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
 from torchinfo import summary
 
 def get_proj_dir(args):
-    return f"{args.task.root_dir}/{args.task.ckpt_dir}"
+    if not os.path.isabs(args.task.ckpt_dir):
+        return f"{args.task.root_dir}/{args.task.ckpt_dir}"
+    else:
+        return args.task.ckpt_dir
 
 def get_checkpoint(args):
     ''' args.task.ckpt_dir <-- args.task.result_dir '''
@@ -33,6 +36,19 @@ def train(args):
         model = model.load_from_checkpoint(ckpt_path)
     summary(model)
 
+    os.environ['WANDB_SILENT']="true"
+    logger = WandbLogger(
+        project=args.task.project,
+        name=args.task.run,
+        group=args.task._name_,
+        dir=f".",
+        mode = 'disabled' if args.proc.debug else 'online',
+        allow_val_change=True,
+        resume='allow',
+        anonymous='allow',
+        config=args,
+    )
+
     from src import callbacks
     pl_callbacks = [ ]
     pl_callbacks += [ callbacks.PlotResults(args), ]
@@ -44,10 +60,10 @@ def train(args):
     #num_sanity_val_steps = 0
 
     pl_conf = dict(
-        gpus=gpus, accelerator="ddp",
+        devices='auto',
+        strategy='ddp_find_unused_parameters_true',
         num_sanity_val_steps=num_sanity_val_steps,
-        logger=None,
-        default_root_dir=f".",
+        logger=logger,
         callbacks=pl_callbacks,
         profiler="simple",
         max_epochs=args.task.total_epoch,
@@ -70,12 +86,11 @@ def eval(args):
     sys.path.append(proj_dir)
     trainers_src = __import__(f'codes.src.task.{args.task._name_}', fromlist=[''])
     callback_src = __import__(f'codes.src.callbacks', fromlist=[''])
-    model = trainers_src.Trainer(args)
 
     ckpt_path = get_checkpoint(args)
     print(f"... load model ckpt from  : {ckpt_path}")
     #hpar_path = f"results.{args.task.result_dir}.lightning_logs"
-    model = model.load_from_checkpoint(
+    model = trainers_src.Trainer.load_from_checkpoint(
         checkpoint_path=ckpt_path,
         #hparams_file=f"",
         map_location=None,
@@ -90,11 +105,15 @@ def eval(args):
     mnum = min(args.proc.gpus)
     gpus=[gpu_num - mnum for gpu_num in args.proc.gpus]
     pl_conf = dict(
-        gpus=gpus, accelerator="ddp",
+        devices='auto',
+        strategy='ddp_find_unused_parameters_true',
         default_root_dir=proj_dir,
         logger=None,
-        detect_anomaly=True if args.proc.debug else False,
         callbacks=pl_callbacks,
+        profiler="simple",
+        max_epochs=args.task.total_epoch,
+        check_val_every_n_epoch=args.task.valid_epoch,
+        detect_anomaly=True if args.proc.debug else False,
     )
     trainer = pl.Trainer(**pl_conf)
     trainer.test(model)
